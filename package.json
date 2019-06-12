@@ -1,0 +1,38 @@
+{
+  "name": "kleisli-ts",
+  "version": "0.0.1",
+  "description": "Kleisli IO for TypeScript",
+  "files": [
+    "lib"
+  ],
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YBogomolov/kleisli-ts.git"
+  },
+  "keywords": [
+    "kleisli",
+    "fp",
+    "functional",
+    "arrow",
+    "typescript"
+  ],
+  "author": "Yuriy Bogomolov <yuriy.bogomolov@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/YBogomolov/kleisli-ts/issues"
+  },
+  "homepage": "https://github.com/YBogomolov/kleisli-ts#readme",
+  "peerDependencies": {
+    "fp-ts": "^1.18.0"
+  },
+  "devDependencies": {
+    "fp-ts": "^1.18.0",
+    "tslint": "^5.17.0",
+    "typescript": "^3.5.1"
+  }
+}
