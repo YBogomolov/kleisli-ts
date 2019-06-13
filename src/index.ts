@@ -282,6 +282,16 @@ export const liftK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
   <E, A, B>(f: (a: A) => B): KleisliIO<F, E, A, B> => new Impure(M, f);
 
 /**
+ * Monadic `chain` function.
+ * Apply function `f` to the result of current `KleisliIO<F, E, A, B>`, determining the next flow of computations.
+ * @param fa Basic KleisliIO computation
+ * @param f Function from `B` to `KleisliIO<F, E, A, C>`, which represents next sequential computation
+ */
+export const chain = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B, C>(fa: KleisliIO<F, E, A, B>, f: (b: B) => KleisliIO<F, E, A, C>): KleisliIO<F, E, A, C> =>
+    pure(M)<E, A, C>((a) => M.chain(fa.run(a), (b) => f(b).run(a)));
+
+/**
  * Create a new `KleisliIO` computation which result in `b`.
  * @param b Lazy value of type `B`
  */
