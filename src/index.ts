@@ -22,34 +22,38 @@
  */
 // tslint:enable:max-line-length
 
+import { Bifunctor2 } from 'fp-ts/lib/Bifunctor';
 import { Either, left as eitherLeft, right as eitherRight } from 'fp-ts/lib/Either';
 import { compose } from 'fp-ts/lib/function';
-import { IOEither, ioEither, tryCatch2v } from 'fp-ts/lib/IOEither';
+import { Type2, URIS2 } from 'fp-ts/lib/HKT';
+import { MonadThrow2 } from 'fp-ts/lib/MonadThrow';
 
 /**
- * KleisliIO – an effectful function from `A` to `IOEither<E, B>`.
+ * KleisliIO – an effectful function from `A` to `Type2<F, E, B>`.
  * For more intuition about Kleisli arrows please @see http://www.cse.chalmers.se/~rjmh/Papers/arrows.pdf
  *
  * @template A domain type
  * @template E error type of codomain
  * @template B value type of codomain
  */
-export abstract class KleisliIO<E, A, B> {
+export abstract class KleisliIO<F extends URIS2, E, A, B> {
   abstract tag: 'Pure' | 'Impure' | 'Compose';
 
   /**
    * Executes current `KleisliIO`, yielding IO of either ann error of type `E` or value of type `B`.
    * @param a Value of type `A`
    */
-  abstract run(a: A): IOEither<E, B>;
+  abstract run(a: A): Type2<F, E, B>;
+
+  abstract M: MonadThrow2<F> & Bifunctor2<F>;
 
   /**
    * Applicative `of` function.
    * Lift a value of type `B` into a context of `KleisliIO`.
    * @param b Lazy value of type `B`
    */
-  of(b: () => B): KleisliIO<E, A, B> {
-    return point(b);
+  of(b: () => B): KleisliIO<F, E, A, B> {
+    return point(this.M)(b);
   }
 
   /**
@@ -57,8 +61,8 @@ export abstract class KleisliIO<E, A, B> {
    * Apply a lifted in `KleisliIO` context function to current value of `KleisliIO`.
    * @param fbc Function from `B` to `C`, lifted in the context of `KleisliIO`
    */
-  ap<C>(fbc: KleisliIO<E, A, (b: B) => C>): KleisliIO<E, A, C> {
-    return pure((a) => this.run(a).ap(fbc.run(a)));
+  ap<C>(fbc: KleisliIO<F, E, A, (b: B) => C>): KleisliIO<F, E, A, C> {
+    return pure(this.M)((a) => this.M.ap(fbc.run(a), this.run(a)));
   }
 
   /**
@@ -66,17 +70,17 @@ export abstract class KleisliIO<E, A, B> {
    * Lift the passed function `f` into a context of `KleisliIO`.
    * @param f Function from `B` to `C` to transform the encapsulated value
    */
-  map<C>(f: (b: B) => C): KleisliIO<E, A, C> {
-    return this.andThen(liftK(f));
+  map<C>(f: (b: B) => C): KleisliIO<F, E, A, C> {
+    return this.andThen(liftK(this.M)(f));
   }
 
   /**
    * Monadic `chain` function.
-   * Apply function `f` to the result of current `KleisliIO<E, A, B>`, determining the next flow of computations.
-   * @param f Function from `B` to `KleisliIO<E, A, C>`, which represents next sequential computation.
+   * Apply function `f` to the result of current `KleisliIO<F, E, A, B>`, determining the next flow of computations.
+   * @param f Function from `B` to `KleisliIO<F, E, A, C>`, which represents next sequential computation.
    */
-  chain<C>(f: (b: B) => KleisliIO<E, A, C>) {
-    return pure<E, A, C>((a) => this.run(a).chain((b) => f(b).run(a)));
+  chain<C>(f: (b: B) => KleisliIO<F, E, A, C>) {
+    return pure(this.M)<E, A, C>((a) => this.M.chain(this.run(a), (b) => f(b).run(a)));
   }
 
   /**
@@ -85,16 +89,16 @@ export abstract class KleisliIO<E, A, B> {
    * @param f Function to transform the error part
    * @param g Function to transform the value part
    */
-  bimap<E1, C>(f: (e: E) => E1, g: (b: B) => C): KleisliIO<E1, A, C> {
-    return pure((a) => this.run(a).bimap(f, g));
+  bimap<E1, C>(f: (e: E) => E1, g: (b: B) => C): KleisliIO<F, E1, A, C> {
+    return pure(this.M)((a) => this.M.bimap(this.run(a), f, g));
   }
 
   /**
    * Compose current `KleisliIO` with the next one.
    * @param that Sequential `KleisliIO` computation
    */
-  andThen<C>(that: KleisliIO<E, B, C>): KleisliIO<E, A, C> {
-    return composeK(that, this);
+  andThen<C>(that: KleisliIO<F, E, B, C>): KleisliIO<F, E, A, C> {
+    return composeK(this.M)(that, this);
   }
 
   /**
@@ -103,8 +107,8 @@ export abstract class KleisliIO<E, A, B> {
    * @param that Second `KleisliIO` computation to run alongside with current
    * @param f Function to process the results of both computations
    */
-  zipWith<C, D>(that: KleisliIO<E, A, C>): (f: (t: [B, C]) => D) => KleisliIO<E, A, D> {
-    return (f) => zipWith<E, A, B, C, D>(this, that)(f);
+  zipWith<C, D>(that: KleisliIO<F, E, A, C>): (f: (t: [B, C]) => D) => KleisliIO<F, E, A, D> {
+    return (f) => zipWith(this.M)<E, A, B, C, D>(this, that)(f);
   }
 
   /**
@@ -112,44 +116,44 @@ export abstract class KleisliIO<E, A, B> {
    * @see zipWith
    * @param that Second `KleisliIO` computation to run alongside with current
    */
-  both<C>(that: KleisliIO<E, A, C>): KleisliIO<E, A, [B, C]> {
-    return zipWith<E, A, B, C, [B, C]>(this, that)((x) => x);
+  both<C>(that: KleisliIO<F, E, A, C>): KleisliIO<F, E, A, [B, C]> {
+    return zipWith(this.M)<E, A, B, C, [B, C]>(this, that)((x) => x);
   }
 
   /**
    * Depending on an input, run ether `this` or `that` computation.
    * @param that Alternative computation
    */
-  join<C>(that: KleisliIO<E, C, B>): KleisliIO<E, Either<A, C>, B> {
-    return switchK(this, that);
+  join<C>(that: KleisliIO<F, E, C, B>): KleisliIO<F, E, Either<A, C>, B> {
+    return switchK(this.M)(this, that);
   }
 
   /**
    * Pass the original imput of type `A` alongside with the result of computation of type `B`, which comes *first*.
    */
-  first(): KleisliIO<E, A, [B, A]> {
-    return this.both(identity<E, A>());
+  first(): KleisliIO<F, E, A, [B, A]> {
+    return this.both(identity(this.M)<E, A>());
   }
 
   /**
    * Pass the original imput of type `A` alongside with the result of computation of type `B`, which comes *second*.
    */
-  second(): KleisliIO<E, A, [A, B]> {
-    return identity<E, A>().both(this);
+  second(): KleisliIO<F, E, A, [A, B]> {
+    return identity(this.M)<E, A>().both(this);
   }
 
   /**
    * Discard the results of `this` computation and return `c`.
    * @param c Value of type `C` to return
    */
-  constant<C>(c: C): KleisliIO<E, A, C> {
-    return this.andThen(liftK(() => c));
+  constant<C>(c: C): KleisliIO<F, E, A, C> {
+    return this.andThen(liftK(this.M)(() => c));
   }
 
   /**
    * Discard the results of `this` computation.
    */
-  toVoid(): KleisliIO<E, A, void> {
+  toVoid(): KleisliIO<F, E, A, void> {
     return this.constant(void 0);
   }
 
@@ -157,8 +161,8 @@ export abstract class KleisliIO<E, A, B> {
    * Discard the results of `this` computation and propagate the original input.
    * Effectively just keep the effect of `this` computation.
    */
-  asEffect(): KleisliIO<E, A, A> {
-    return this.first().andThen(snd());
+  asEffect(): KleisliIO<F, E, A, A> {
+    return this.first().andThen(snd(this.M)());
   }
 }
 
@@ -170,7 +174,7 @@ class KleisliIOError<E> extends Error {
 }
 
 /**
- * A pure functional computation from `A` to `IOEither<E, B>`, which **never** throws in runtime.
+ * A pure functional computation from `A` to `Type2<F, E, B>`, which **never** throws in runtime.
  *
  * @see KleisliIO
  *
@@ -178,11 +182,11 @@ class KleisliIOError<E> extends Error {
  * @template E error type of codomain
  * @template B value type of codomain
  */
-class Pure<E, A, B> extends KleisliIO<E, A, B> {
+class Pure<F extends URIS2, E, A, B> extends KleisliIO<F, E, A, B> {
   readonly tag = 'Pure';
-  constructor(readonly _run: (a: A) => IOEither<E, B>) { super(); }
+  constructor(readonly M: MonadThrow2<F> & Bifunctor2<F>, readonly _run: (a: A) => Type2<F, E, B>) { super(); }
 
-  run = (a: A): IOEither<E, B> => this._run(a);
+  run = (a: A): Type2<F, E, B> => this._run(a);
 }
 
 /**
@@ -194,16 +198,21 @@ class Pure<E, A, B> extends KleisliIO<E, A, B> {
  * @template E error type of codomain
  * @template B value type of codomain
  */
-class Impure<E, A, B> extends KleisliIO<E, A, B> {
+class Impure<F extends URIS2, E, A, B> extends KleisliIO<F, E, A, B> {
   readonly tag = 'Impure';
-  constructor(readonly _run: (a: A) => B) { super(); }
+  constructor(readonly M: MonadThrow2<F> & Bifunctor2<F>, readonly _run: (a: A) => B) { super(); }
 
-  run = (a: A): IOEither<E, B> => tryCatch2v(() => this._run(a), (e) => {
-    if (e instanceof KleisliIOError) {
-      return e.error;
+  run = (a: A): Type2<F, E, B> => {
+    try {
+      const b = this._run(a);
+      return this.M.of(b);
+    } catch (e) {
+      if (e instanceof KleisliIOError) {
+        return this.M.throwError(e.error);
+      }
+      return this.M.throwError(e as E);
     }
-    return e as E;
-  })
+  }
 }
 
 /**
@@ -215,38 +224,45 @@ class Impure<E, A, B> extends KleisliIO<E, A, B> {
  * @template E error type of codomain
  * @template B value type of codomain
  */
-class Compose<E, A, B, C> extends KleisliIO<E, A, C> {
+class Compose<F extends URIS2, E, A, B, C> extends KleisliIO<F, E, A, C> {
   readonly tag = 'Compose';
-  constructor(readonly g: KleisliIO<E, B, C>, readonly f: KleisliIO<E, A, B>) { super(); }
+  constructor(
+    readonly M: MonadThrow2<F> & Bifunctor2<F>,
+    readonly g: KleisliIO<F, E, B, C>,
+    readonly f: KleisliIO<F, E, A, B>,
+  ) { super(); }
 
-  run = (a: A): IOEither<E, C> => this.f.run(a).chain(this.g.run);
+  run = (a: A): Type2<F, E, C> => this.M.chain(this.f.run(a), this.g.run);
 }
 
-const isImpure = <E, A, B>(a: KleisliIO<E, A, B>): a is Impure<E, A, B> => a.tag === 'Impure';
+const isImpure = <F extends URIS2, E, A, B>(a: KleisliIO<F, E, A, B>): a is Impure<F, E, A, B> => a.tag === 'Impure';
 
 /**
  * Create a new instance of `Pure` computation.
  * @param f Function to run
  */
-export const pure = <E, A, B>(f: (a: A) => IOEither<E, B>): KleisliIO<E, A, B> => new Pure<E, A, B>(f);
+export const pure = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B>(f: (a: A) => Type2<F, E, B>): KleisliIO<F, E, A, B> => new Pure<F, E, A, B>(M, f);
 
 /**
  * Create a new instance of `Impure` computation.
  * @param catcher Function to transform the error from `Error` into `E`
  * @param f Impure computation from `A` to `B` which may throw
  */
-export const impure = <E>(catcher: (e: Error) => E) => <A, B>(f: (a: A) => B): KleisliIO<E, A, B> => new Impure(
-  (a: A) => {
-    try {
-      return f(a);
-    } catch (error) {
-      if (catcher(error) !== undefined) {
-        throw new KleisliIOError<E>(catcher(error));
+export const impure = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E>(catcher: (e: Error) => E) => <A, B>(f: (a: A) => B): KleisliIO<F, E, A, B> => new Impure(
+    M,
+    (a: A) => {
+      try {
+        return f(a);
+      } catch (error) {
+        if (catcher(error) !== undefined) {
+          throw new KleisliIOError<E>(catcher(error));
+        }
+        throw error;
       }
-      throw error;
-    }
-  },
-);
+    },
+  );
 
 const voidCatcher = (e: Error): never => { throw e; };
 
@@ -255,64 +271,82 @@ const voidCatcher = (e: Error): never => { throw e; };
  * or throw exceptions which should lead to termination fo the program.
  * @param f Impure computation from `A` to `B`
  */
-export const impureVoid = <A, B>(f: (a: A) => B): KleisliIO<never, A, B> => impure(voidCatcher)(f);
+export const impureVoid = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <A, B>(f: (a: A) => B): KleisliIO<F, never, A, B> => impure(M)(voidCatcher)(f);
 
 /**
  * Lift the impure computation into `KleisliIO` context.
  * @param f Impure function from `A` to `B`
  */
-export const liftK = <E, A, B>(f: (a: A) => B): KleisliIO<E, A, B> => new Impure(f);
+export const liftK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B>(f: (a: A) => B): KleisliIO<F, E, A, B> => new Impure(M, f);
+
+/**
+ * Monadic `chain` function.
+ * Apply function `f` to the result of current `KleisliIO<F, E, A, B>`, determining the next flow of computations.
+ * @param fa Basic KleisliIO computation
+ * @param f Function from `B` to `KleisliIO<F, E, A, C>`, which represents next sequential computation
+ */
+export const chain = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B, C>(fa: KleisliIO<F, E, A, B>, f: (b: B) => KleisliIO<F, E, A, C>): KleisliIO<F, E, A, C> =>
+    pure(M)<E, A, C>((a) => M.chain(fa.run(a), (b) => f(b).run(a)));
 
 /**
  * Create a new `KleisliIO` computation which result in `b`.
  * @param b Lazy value of type `B`
  */
-export const point = <E, A, B>(b: () => B): KleisliIO<E, A, B> => liftK(b);
+export const point = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B>(b: () => B): KleisliIO<F, E, A, B> => liftK(M)(b);
 
 /**
  * Fail with an error of type `E`.
  * @param e Error of type `E`
  */
-export const fail = <E, A, B>(e: E): KleisliIO<E, A, B> => new Impure(() => { throw new KleisliIOError(e); });
+export const fail = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B>(e: E): KleisliIO<F, E, A, B> => new Impure(M, () => { throw new KleisliIOError(e); });
 
 /**
  * Tuple swap, lifted in `KleisliIO` context.
  */
-export const swap = <E, A, B>(): KleisliIO<E, [A, B], [B, A]> => liftK(([a, b]) => [b, a]);
+export const swap = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B>(): KleisliIO<F, E, [A, B], [B, A]> => liftK(M)(([a, b]) => [b, a]);
 
 /**
  * Perform right-to-left Kleisli arrows compotions.
  * @param second Second computation to apply
  * @param first First computation to apply
  */
-export const composeK = <E, A, B, C>(second: KleisliIO<E, B, C>, first: KleisliIO<E, A, B>): KleisliIO<E, A, C> =>
-  isImpure(second) && isImpure(first) ?
-    new Impure(compose(second._run, first._run)) :
-    new Compose(second, first);
+export const composeK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B, C>(second: KleisliIO<F, E, B, C>, first: KleisliIO<F, E, A, B>): KleisliIO<F, E, A, C> =>
+    isImpure(second) && isImpure(first) ?
+      new Impure(M, compose(second._run, first._run)) :
+      new Compose(M, second, first);
 
 /**
  * Perform left-to-right Kleisli arrows compotions.
  * @param first First computation to apply
  * @param second Second computation to apply
  */
-export const pipeK = <E, A, B, C>(first: KleisliIO<E, A, B>, second: KleisliIO<E, B, C>): KleisliIO<E, A, C> =>
-  composeK(second, first);
+export const pipeK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B, C>(first: KleisliIO<F, E, A, B>, second: KleisliIO<F, E, B, C>): KleisliIO<F, E, A, C> =>
+    composeK(M)(second, first);
 
 /**
  * Depending on the input of type `Either<A, C>`, execute either `l` or `r` branches.
  * @param l Left branch of computation
  * @param r Right branch of computation
  */
-export const switchK = <E, A, B, C>(l: KleisliIO<E, A, B>, r: KleisliIO<E, C, B>): KleisliIO<E, Either<A, C>, B> =>
-  isImpure(l) && isImpure(r) ?
-    new Impure<E, Either<A, C>, B>((a) => a.fold(
-      (al) => l._run(al),
-      (ar) => r._run(ar),
-    )) :
-    pure((a) => a.fold(
-      (al) => l.run(al),
-      (ar) => r.run(ar),
-    ));
+export const switchK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B, C>(l: KleisliIO<F, E, A, B>, r: KleisliIO<F, E, C, B>): KleisliIO<F, E, Either<A, C>, B> =>
+    isImpure(l) && isImpure(r) ?
+      new Impure<F, E, Either<A, C>, B>(M, (a) => a.fold(
+        (al) => l._run(al),
+        (ar) => r._run(ar),
+      )) :
+      pure(M)((a) => a.fold(
+        (al) => l.run(al),
+        (ar) => r.run(ar),
+      ));
 
 /**
  * Execute `l` and `r` computations and if both succeed, process the results with `f`.
@@ -320,55 +354,60 @@ export const switchK = <E, A, B, C>(l: KleisliIO<E, A, B>, r: KleisliIO<E, C, B>
  * @param r Second `KleisliIO` computation
  * @param f Function to process the results of both computations
  */
-export const zipWith = <E, A, B, C, D>(l: KleisliIO<E, A, B>, r: KleisliIO<E, A, C>) =>
-  (f: (t: [B, C]) => D): KleisliIO<E, A, D> =>
-    isImpure(l) && isImpure(r) ?
-      new Impure<E, A, D>((a) => f([l._run(a), r._run(a)])) :
-      pure((a) => l.run(a).chain((b) => r.run(a).map((c) => f([b, c]))));
+export const zipWith = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B, C, D>(l: KleisliIO<F, E, A, B>, r: KleisliIO<F, E, A, C>) =>
+    (f: (t: [B, C]) => D): KleisliIO<F, E, A, D> =>
+      isImpure(l) && isImpure(r) ?
+        new Impure<F, E, A, D>(M, (a) => f([l._run(a), r._run(a)])) :
+        pure(M)((a) => M.chain(l.run(a), (b) => M.map(r.run(a), (c) => f([b, c]))));
 
 /**
  * Propagate the input unchanged.
  */
-export const identity = <E, A>(): KleisliIO<E, A, A> => liftK((x) => x);
+export const identity = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A>(): KleisliIO<F, E, A, A> => liftK(M)((x) => x);
 
 /**
  * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
  * A flipped version of @see right.
  * @param k Computation from `A` to `B`
  */
-export const left = <E, A, B, C>(k: KleisliIO<E, A, B>): KleisliIO<E, Either<A, C>, Either<B, C>> =>
-  isImpure(k) ?
-    new Impure((a) => a.fold(
-      (l) => eitherLeft(k._run(l)),
-      (r) => eitherRight(r),
-    )) :
-    pure((a) => a.fold(
-      (l) => k.run(l).map<Either<B, C>>(eitherLeft),
-      (r) => ioEither.of(eitherRight(r)),
-    ));
+export const left = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B, C>(k: KleisliIO<F, E, A, B>): KleisliIO<F, E, Either<A, C>, Either<B, C>> =>
+    isImpure(k) ?
+      new Impure(M, (a) => a.fold(
+        (l) => eitherLeft(k._run(l)),
+        (r) => eitherRight(r),
+      )) :
+      pure(M)((a) => a.fold(
+        (l) => M.map(k.run(l), (x) => eitherLeft(x)),
+        (r) => M.of(eitherRight(r)),
+      ));
 
 /**
  * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
  * A flipped version of @see left.
  * @param k Computation from `A` to `B`
  */
-export const right = <E, A, B, C>(k: KleisliIO<E, A, B>): KleisliIO<E, Either<C, A>, Either<C, B>> =>
-  isImpure(k) ?
-    new Impure((a) => a.fold(
-      (l) => eitherLeft(l),
-      (r) => eitherRight(k._run(r)),
-    )) :
-    pure((a) => a.fold(
-      (l) => ioEither.of(eitherLeft(l)),
-      (r) => k.run(r).map<Either<C, B>>(eitherRight),
-    ));
+export const right = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B, C>(k: KleisliIO<F, E, A, B>): KleisliIO<F, E, Either<C, A>, Either<C, B>> =>
+    isImpure(k) ?
+      new Impure(M, (a) => a.fold(
+        (l) => eitherLeft(l),
+        (r) => eitherRight(k._run(r)),
+      )) :
+      pure(M)((a) => a.fold(
+        (l) => M.of(eitherLeft(l)),
+        (r) => M.map(k.run(r), (x) => eitherRight(x)),
+      ));
 
 /**
  * Depending on the condition, propagate the original input through the left or right part of `Either`.
  * @param cond Predicate for `A`
  */
-export const test = <E, A>(cond: KleisliIO<E, A, boolean>): KleisliIO<E, A, Either<A, A>> =>
-  cond.both(identity()).andThen(liftK(([c, a]) => c ? eitherLeft(a) : eitherRight(a)));
+export const test = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A>(cond: KleisliIO<F, E, A, boolean>): KleisliIO<F, E, A, Either<A, A>> =>
+    cond.both(identity(M)()).andThen(liftK(M)(([c, a]) => c ? eitherLeft(a) : eitherRight(a)));
 
 /**
  * Depending on the condition, execute either `then` or `else`.
@@ -376,70 +415,58 @@ export const test = <E, A>(cond: KleisliIO<E, A, boolean>): KleisliIO<E, A, Eith
  * @param then Computation to run if `cond` is `true`
  * @param else_ Computation to run if `cond` is `false`
  */
-export const ifThenElse = <E, A, B>(cond: KleisliIO<E, A, boolean>) =>
-  (then: KleisliIO<E, A, B>) => (else_: KleisliIO<E, A, B>): KleisliIO<E, A, B> =>
-    isImpure(cond) && isImpure(then) && isImpure(else_) ?
-      new Impure((a) => cond._run(a) ? then._run(a) : else_._run(a)) :
-      test(cond).andThen(switchK(then, else_));
+export const ifThenElse = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B>(cond: KleisliIO<F, E, A, boolean>) =>
+    (then: KleisliIO<F, E, A, B>) => (else_: KleisliIO<F, E, A, B>): KleisliIO<F, E, A, B> =>
+      isImpure(cond) && isImpure(then) && isImpure(else_) ?
+        new Impure(M, (a) => cond._run(a) ? then._run(a) : else_._run(a)) :
+        test(M)(cond).andThen(switchK(M)(then, else_));
 
 /**
  * Simplified version of @see ifThenElse without the `else` part.
  * @param cond Predicate for `A`
  * @param then Computation to run if `cond` is `true`
  */
-export const ifThen = <E, A>(cond: KleisliIO<E, A, boolean>) =>
-  (then: KleisliIO<E, A, A>): KleisliIO<E, A, A> => ifThenElse<E, A, A>(cond)(then)(identity());
+export const ifThen = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A>(cond: KleisliIO<F, E, A, boolean>) =>
+    (then: KleisliIO<F, E, A, A>): KleisliIO<F, E, A, A> => ifThenElse(M)<E, A, A>(cond)(then)(identity(M)());
 
 /**
  * While-loop: run `body` until `cond` is `true`.
  * @param cond Predicate for `A`
  * @param body Computation to run continuously until `cond` is `true`
  */
-export const whileDo = <E, A>(cond: KleisliIO<E, A, boolean>) => (body: KleisliIO<E, A, A>): KleisliIO<E, A, A> => {
-  if (isImpure(cond) && isImpure(body)) {
-    return new Impure<E, A, A>(
-      (a0) => {
-        let a = a0;
+export const whileDo = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A>(cond: KleisliIO<F, E, A, boolean>) => (body: KleisliIO<F, E, A, A>): KleisliIO<F, E, A, A> => {
+    if (isImpure(cond) && isImpure(body)) {
+      return new Impure<F, E, A, A>(
+        M,
+        (a0) => {
+          let a = a0;
 
-        while (cond._run(a)) {
-          a = body._run(a);
-        }
+          while (cond._run(a)) {
+            a = body._run(a);
+          }
 
-        return a;
-      },
-    );
-  } else {
-    const loop = (): KleisliIO<E, A, A> =>
-      pure<E, A, A>((a) => cond.run(a).chain((b) => b ? body.run(a).chain(loop().run) : ioEither.of(a)));
+          return a;
+        },
+      );
+    } else {
+      const loop = (): KleisliIO<F, E, A, A> =>
+        pure(M)<E, A, A>((a) => M.chain(cond.run(a), (b) => b ? M.chain(body.run(a), loop().run) : M.of(a)));
 
-    return loop();
-  }
-};
+      return loop();
+    }
+  };
 
 /**
  * Lifted version of `fst` tuple function.
  */
-export const fst = <E, A, B>(): KleisliIO<E, [A, B], A> => liftK(([a]) => a);
+export const fst = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B>(): KleisliIO<F, E, [A, B], A> => liftK(M)(([a]) => a);
 
 /**
  * Lifted version of `snd` tuple function.
  */
-export const snd = <E, A, B>(): KleisliIO<E, [A, B], B> => liftK(([, b]) => b);
-
-/**
- * Unfolds the `IOEither` structure and throws `E` as an exception, or returns `A` as a result.
- *
- * @example
- * const k: KleisliIO<Error, void, string> = liftK(() => {
- *  if (Math.random() > 0.5) {
- *    throw new Error('oops');
- *  }
- *  return 'foo';
- * });
- * const log: KleisliIO<never, string, void> = impureVoid((s) => console.log(s));
- *
- * unsafeRun(k.andThen(log).run()); // 🤞🏻 hope it doesn't blow up and prints 'foo'
- *
- * @param ie `IOEither` to run
- */
-export const unsafeRun = <E, A>(ie: IOEither<E, A>): A => ie.run().fold((e) => { throw e; }, (a) => a);
+export const snd = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B>(): KleisliIO<F, E, [A, B], B> => liftK(M)(([, b]) => b);
