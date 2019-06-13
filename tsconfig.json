@@ -2,7 +2,7 @@
   "compileOnSave": true,
   "compilerOptions": {
     "outDir": "./lib",
-    "rootDir": "./src",
+    "rootDir": ".",
     "module": "commonjs",
     "target": "esnext",
     "moduleResolution": "node",
@@ -19,13 +19,17 @@
     "forceConsistentCasingInFileNames": true,
     "suppressImplicitAnyIndexErrors": true,
     "declaration": true,
+    "types": [
+      "node"
+    ],
     "lib": [
       "esnext",
       "dom"
     ]
   },
   "include": [
-    "./src/**/*.ts"
+    "./src/**/*.ts",
+    "./examples/**/*.ts"
   ],
   "exclude": [
     "node_modules"
