@@ -20,7 +20,7 @@ Please see [examples](./examples) for posible ways of programming with Kleisli a
     npm i fp-ts@1
     yarn add fp-ts@1
     ```
-3. `kleisli-ts` provides curries functions as its main API, but you also have a convenience method `getInstancesFor`, which returns an API instance bound to the given monad:
+3. `kleisli-ts` provides curried functions as its main API, but you also have a convenience method `getInstancesFor`, which returns an API instance bound to the given monad:
     ```ts
     import { getInstancesFor } from 'kleisli-ts';
     import { ioEither } from 'fp-ts/lib/IOEither';
