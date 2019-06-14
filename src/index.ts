@@ -471,7 +471,7 @@ export const snd = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
 
 /**
  * Convenience method which retruns instances of KleisliIO API for the given monad.
- * @param M MonadThrow & Bifounctor instance
+ * @param M MonadThrow & Bifunctor instance
  */
 export const getInstancesFor = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) => ({
   of: of(M),
