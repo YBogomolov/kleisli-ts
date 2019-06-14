@@ -48,15 +48,6 @@ export abstract class KleisliIO<F extends URIS2, E, A, B> {
   abstract M: MonadThrow2<F> & Bifunctor2<F>;
 
   /**
-   * Applicative `of` function.
-   * Lift a value of type `B` into a context of `KleisliIO`.
-   * @param b Lazy value of type `B`
-   */
-  of(b: () => B): KleisliIO<F, E, A, B> {
-    return point(this.M)(b);
-  }
-
-  /**
    * Applicative `ap` function.
    * Apply a lifted in `KleisliIO` context function to current value of `KleisliIO`.
    * @param fbc Function from `B` to `C`, lifted in the context of `KleisliIO`
@@ -299,6 +290,13 @@ export const point = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
   <E, A, B>(b: () => B): KleisliIO<F, E, A, B> => liftK(M)(b);
 
 /**
+ * Applicative `of` function.
+ * Lift a value of type `B` into a context of `KleisliIO`.
+ * @param b Lazy value of type `B`
+ */
+export const of = point;
+
+/**
  * Fail with an error of type `E`.
  * @param e Error of type `E`
  */
@@ -470,3 +468,34 @@ export const fst = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
  */
 export const snd = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
   <E, A, B>(): KleisliIO<F, E, [A, B], B> => liftK(M)(([, b]) => b);
+
+/**
+ * Convenience method which retruns instances of KleisliIO API for the given monad.
+ * @param M MonadThrow & Bifounctor instance
+ */
+export const getInstancesFor = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) => ({
+  of: of(M),
+  pure: pure(M),
+  impure: impure(M),
+  impureVoid: impureVoid(M),
+  liftK: liftK(M),
+  chain: chain(M),
+  point: point(M),
+  fail: fail(M),
+  swap: swap(M),
+  composeK: composeK(M),
+  pipeK: pipeK(M),
+  switchK: switchK(M),
+  zipWith: zipWith(M),
+  identity: identity(M),
+  left: left(M),
+  right: right(M),
+  test: test(M),
+  ifThenElse: ifThenElse(M),
+  ifThen: ifThen(M),
+  whileDo: whileDo(M),
+  fst: fst(M),
+  snd: snd(M),
+});
+
+export default getInstancesFor;
