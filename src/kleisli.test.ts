@@ -153,5 +153,9 @@ describe('KleisliIO suite', () => {
       expect(m.run({}).isLeft()).to.be.true;
       expect(m.run({}).value).to.be.an.instanceOf(Error).and.to.have.property('message').equal('fail');
     });
+
+    it('swap', () => {
+      expect(K.swap().run([1, true]).value).to.deep.equal([true, 1]);
+    });
   });
 });
