@@ -251,5 +251,14 @@ describe('KleisliIO suite', () => {
       expect(m.run(left(41)).isRight()).to.be.true;
       expect(m.run(left(41)).value).to.deep.equal(left(41));
     });
+
+    it('test', () => {
+      const m = K.test(K.liftK<never, number, boolean>((n) => n % 2 === 0));
+
+      expect(m.run(42).value.isLeft()).to.be.true;
+      expect(m.run(42).value.value).to.equal(42);
+      expect(m.run(41).value.isRight()).to.be.true;
+      expect(m.run(41).value.value).to.equal(41);
+    });
   });
 });
