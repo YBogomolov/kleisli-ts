@@ -20,7 +20,9 @@
     "suppressImplicitAnyIndexErrors": true,
     "declaration": true,
     "types": [
-      "node"
+      "node",
+      "mocha",
+      "expect"
     ],
     "lib": [
       "esnext",
