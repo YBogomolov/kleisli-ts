@@ -125,5 +125,19 @@ describe('KleisliIO suite', () => {
       expect(m.run('aaaa').isRight()).to.be.true;
       expect(m.run('aaaa').value).to.equal(4);
     });
+
+    it('chain', () => {
+      const f = (s: string) => s.length > 0 ?
+        K.of<Error, void, number>(s.length) :
+        K.fail<Error, void, number>(new Error('empty string'));
+
+      expect(K.of<Error, void, string>('aaa').chain(f).run().isRight()).to.be.true;
+      expect(K.of<Error, void, string>('aaa').chain(f).run().value).to.equal(3);
+      expect(K.of<Error, void, string>('').chain(f).run().isLeft()).to.be.true;
+      expect(K.of<Error, void, string>('').chain(f).run().value as Error)
+        .to.be.an.instanceOf(Error)
+        .and
+        .to.have.property('message').equal('empty string');
+    });
   });
 });
