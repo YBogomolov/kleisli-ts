@@ -260,5 +260,28 @@ describe('KleisliIO suite', () => {
       expect(m.run(41).value.isRight()).to.be.true;
       expect(m.run(41).value.value).to.equal(41);
     });
+
+    it('ifThenElse', () => {
+      const m = K.ifThenElse<never, number, string>
+        (K.liftK((n) => n % 2 === 0))
+        (K.liftK((n) => `is even: ${n}`))
+        (K.liftK((n) => `is odd: ${n}`));
+
+      expect(m.run(42).isRight()).to.be.true;
+      expect(m.run(42).value).to.equal('is even: 42');
+      expect(m.run(41).isRight()).to.be.true;
+      expect(m.run(41).value).to.equal('is odd: 41');
+    });
+
+    it('ifThen', () => {
+      const m = K.ifThen<never, number>
+        (K.liftK((n) => n % 2 === 1))
+        (K.liftK((n) => n + 1));
+
+      expect(m.run(41).isRight()).to.be.true;
+      expect(m.run(41).value).to.equal(42);
+      expect(m.run(42).isRight()).to.be.true;
+      expect(m.run(42).value).to.equal(42);
+    });
   });
 });
