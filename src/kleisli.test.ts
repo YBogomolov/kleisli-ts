@@ -230,5 +230,26 @@ describe('KleisliIO suite', () => {
       expect(m.run('foo!').isRight()).to.be.true;
       expect(m.run('foo!').value).to.equal('String ends with "!"');
     });
+
+    it('identity', () => {
+      expect(K.identity().run(42).isRight()).to.be.true;
+      expect(K.identity().run(42).value).to.equal(42);
+    });
+
+    it('left', () => {
+      const m = K.left<never, number, string, number>(K.liftK((n) => n.toString()));
+      expect(m.run(right(42)).isRight()).to.be.true;
+      expect(m.run(right(42)).value).to.deep.equal(right(42));
+      expect(m.run(left(41)).isRight()).to.be.true;
+      expect(m.run(left(41)).value).to.deep.equal(left('41'));
+    });
+
+    it('right', () => {
+      const m = K.right<never, number, string, number>(K.liftK((n) => n.toString()));
+      expect(m.run(right(42)).isRight()).to.be.true;
+      expect(m.run(right(42)).value).to.deep.equal(right('42'));
+      expect(m.run(left(41)).isRight()).to.be.true;
+      expect(m.run(left(41)).value).to.deep.equal(left(41));
+    });
   });
 });
