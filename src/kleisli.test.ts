@@ -139,5 +139,19 @@ describe('KleisliIO suite', () => {
         .and
         .to.have.property('message').equal('empty string');
     });
+
+    it('point', () => {
+      const m = K.point<never, void, number>(() => 42);
+
+      expect(m.run().isRight()).to.be.true;
+      expect(m.run().value).to.equal(42);
+    });
+
+    it('fail', () => {
+      const m = K.fail(new Error('fail'));
+
+      expect(m.run({}).isLeft()).to.be.true;
+      expect(m.run({}).value).to.be.an.instanceOf(Error).and.to.have.property('message').equal('fail');
+    });
   });
 });
