@@ -201,7 +201,7 @@ class Impure<F extends URIS2, E, A, B> extends KleisliIO<F, E, A, B> {
       if (e instanceof KleisliIOError) {
         return this.M.throwError(e.error);
       }
-      return this.M.throwError(e as E);
+      throw e;
     }
   }
 }

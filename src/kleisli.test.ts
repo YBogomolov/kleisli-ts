@@ -1,3 +1,5 @@
+// tslint:disable:no-unused-expression
+
 import { expect } from 'chai';
 import { either, left, right, URI } from 'fp-ts/lib/Either';
 import { compose, identity } from 'fp-ts/lib/function';
@@ -56,6 +58,62 @@ describe('KleisliIO suite', () => {
       const g = (s: string) => K.of<never, void, number>(s.length);
 
       expect(m.chain(f).chain(g).run()).to.deep.equal(m.chain((n) => f(n).chain(g)).run());
+    });
+  });
+
+  describe('KleisliIO API', () => {
+    it('of', () => {
+      const m = K.of<never, void, number>(42);
+
+      expect(m.run().isRight()).to.be.true;
+      expect(m.run().value).to.equal(42);
+    });
+
+    it('pure', () => {
+      const m = K.pure<Error, string, string>(
+        (s: string) => s.length > 0 ? right(s.toLocaleUpperCase() + '!') : left(new Error('empty string')),
+      );
+
+      expect(m.run('aaaa').isRight()).to.be.true;
+      expect(m.run('aaaa').value).to.equal('AAAA!');
+      expect(m.run('').isLeft()).to.be.true;
+      expect(m.run('').value).to.be.an.instanceOf(Error);
+      expect(m.run('').value as Error).to.have.property('message').equal('empty string');
+    });
+
+    it('impure', () => {
+      const f = (s: string) => {
+        if (s.length === 0) {
+          throw new Error('empty string');
+        }
+        return s.toLocaleUpperCase() + '!';
+      };
+      const m = K.impure(identity)(f);
+
+      expect(m.run('aaaa').isRight()).to.be.true;
+      expect(m.run('aaaa').value).to.equal('AAAA!');
+      expect(m.run('').isLeft()).to.be.true;
+      expect(m.run('').value).to.be.an.instanceOf(Error);
+      expect(m.run('').value as Error).to.have.property('message').equal('empty string');
+    });
+
+    it('impureVoid', () => {
+      const f = (terminate: boolean) => {
+        if (terminate) {
+          throw new Error('terminate');
+        }
+        return true;
+      };
+      const m = K.impureVoid(f);
+
+      try {
+        expect(m.run(false).value).to.be.true;
+        m.run(true);
+        expect.fail();
+      } catch (e) {
+        expect(e).to.be.an.instanceOf(Error);
+        expect(e).to.have.property('message').equal('terminate');
+      }
     });
   });
 });
