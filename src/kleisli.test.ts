@@ -191,5 +191,44 @@ describe('KleisliIO suite', () => {
         .and
         .to.have.property('message').equal('empty string');
     });
+
+    it('switchK', () => {
+      const m = K.switchK<never, string, boolean, number>(
+        K.liftK((s) => s.length > 0),
+        K.liftK((n) => n > 0),
+      );
+
+      expect(m.run(right(42)).isRight()).to.be.true;
+      expect(m.run(right(42)).value).to.be.true;
+      expect(m.run(left('')).isRight()).to.be.true;
+      expect(m.run(left('')).value).to.be.false;
+    });
+
+    it('zipWith', () => {
+      const m = K.zipWith<never, string, boolean, boolean, string>(
+        K.liftK((s) => s.startsWith('a')),
+        K.liftK((s) => s.endsWith('!')),
+      )(([startsWithA, endsWithBang]) => {
+        switch (true) {
+          case startsWithA && endsWithBang:
+            return 'String starts with "a" and ends with "!"';
+          case startsWithA:
+            return 'String starts with "a"';
+          case endsWithBang:
+            return 'String ends with "!"';
+          default:
+            return 'String neither starts with "a", nor ends with "!"';
+        }
+      });
+
+      expect(m.run('a').isRight()).to.be.true;
+      expect(m.run('a').value).to.equal('String starts with "a"');
+      expect(m.run('a!').isRight()).to.be.true;
+      expect(m.run('a!').value).to.equal('String starts with "a" and ends with "!"');
+      expect(m.run('foo').isRight()).to.be.true;
+      expect(m.run('foo').value).to.equal('String neither starts with "a", nor ends with "!"');
+      expect(m.run('foo!').isRight()).to.be.true;
+      expect(m.run('foo!').value).to.equal('String ends with "!"');
+    });
   });
 });
