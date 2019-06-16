@@ -115,5 +115,15 @@ describe('KleisliIO suite', () => {
         expect(e).to.have.property('message').equal('terminate');
       }
     });
+
+    it('liftK', () => {
+      const f = (s: string) => s.length;
+      const m = K.liftK<never, string, number>(f);
+
+      expect(m.run('').isRight()).to.be.true;
+      expect(m.run('').value).to.equal(0);
+      expect(m.run('aaaa').isRight()).to.be.true;
+      expect(m.run('aaaa').value).to.equal(4);
+    });
   });
 });
