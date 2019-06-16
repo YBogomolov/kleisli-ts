@@ -7,7 +7,7 @@ Part of [fp-ts](https://github.com/gcanti/fp-ts) ecosystem.
 
 TypeScript port of `KleisliIO` – Kleisli arrows with bifunctor IO from great talk by [John A. De Goes](https://github.com/jdegoes) at LambdaConf'18 called ["Blazing Fast, Pure Effects without Monads"](https://www.youtube.com/watch?v=L8AEj6IRNEE).
 
-Please see [examples](./examples) for posible ways of programming with Kleisli arrows.
+Please see [examples](./examples) for possible ways of programming with Kleisli arrows.
 
 ## Installation & usage
 
