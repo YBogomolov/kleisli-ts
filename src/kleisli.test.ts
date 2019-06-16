@@ -157,5 +157,39 @@ describe('KleisliIO suite', () => {
     it('swap', () => {
       expect(K.swap().run([1, true]).value).to.deep.equal([true, 1]);
     });
+
+    it('composeK', () => {
+      const f = K.pure<Error, string, string>(
+        (s) => s.length > 0 ? right(s.toLocaleUpperCase() + '!') : left(new Error('empty string')),
+      );
+      const g = K.pure<Error, string, number>(
+        (s) => s.length > 0 ? right(s.length) : left(new Error('empty string')),
+      );
+
+      expect(K.composeK(g, f).run('aaa').isRight()).to.be.true;
+      expect(K.composeK(g, f).run('aaa').value).to.equal(4);
+      expect(K.composeK(g, f).run('').isLeft()).to.be.true;
+      expect(K.composeK(g, f).run('').value)
+        .to.be.an.instanceOf(Error)
+        .and
+        .to.have.property('message').equal('empty string');
+    });
+
+    it('pipeK', () => {
+      const f = K.pure<Error, string, string>(
+        (s) => s.length > 0 ? right(s.toLocaleUpperCase() + '!') : left(new Error('empty string')),
+      );
+      const g = K.pure<Error, string, number>(
+        (s) => s.length > 0 ? right(s.length) : left(new Error('empty string')),
+      );
+
+      expect(K.pipeK(f, g).run('aaa').isRight()).to.be.true;
+      expect(K.pipeK(f, g).run('aaa').value).to.equal(4);
+      expect(K.pipeK(f, g).run('').isLeft()).to.be.true;
+      expect(K.pipeK(f, g).run('').value)
+        .to.be.an.instanceOf(Error)
+        .and
+        .to.have.property('message').equal('empty string');
+    });
   });
 });
