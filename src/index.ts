@@ -294,7 +294,8 @@ export const point = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
  * Lift a value of type `B` into a context of `KleisliIO`.
  * @param b Lazy value of type `B`
  */
-export const of = point;
+export const of = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
+  <E, A, B>(b: B): KleisliIO<F, E, A, B> => liftK(M)(() => b);
 
 /**
  * Fail with an error of type `E`.
