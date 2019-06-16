@@ -283,5 +283,31 @@ describe('KleisliIO suite', () => {
       expect(m.run(42).isRight()).to.be.true;
       expect(m.run(42).value).to.equal(42);
     });
+
+    it('whileDo', () => {
+      let callCount = 0;
+      const m = K.whileDo<never, number>
+        (K.liftK((n) => n < 10))
+        (K.liftK((n) => {
+          callCount++;
+          return n + 1;
+        }));
+
+      const res = m.run(4);
+
+      expect(res.isRight()).to.be.true;
+      expect(res.value).to.equal(10);
+      expect(callCount).to.equal(6);
+    });
+
+    it('fst', () => {
+      expect(K.fst().run([1, true]).isRight()).to.be.true;
+      expect(K.fst().run([1, true]).value).to.equal(1);
+    });
+
+    it('snd', () => {
+      expect(K.snd().run([1, true]).isRight()).to.be.true;
+      expect(K.snd().run([1, true]).value).to.be.true;
+    });
   });
 });
