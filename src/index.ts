@@ -292,7 +292,7 @@ export const point = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
 /**
  * Applicative `of` function.
  * Lift a value of type `B` into a context of `KleisliIO`.
- * @param b Lazy value of type `B`
+ * @param b Value of type `B`
  */
 export const of = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
   <E, A, B>(b: B): KleisliIO<F, E, A, B> => liftK(M)(() => b);
@@ -433,7 +433,7 @@ export const ifThen = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
 /**
  * While-loop: run `body` until `cond` is `true`.
  * @param cond Predicate for `A`
- * @param body Computation to run continuously until `cond` is `true`
+ * @param body Computation to run continuously until `cond` is `false`
  */
 export const whileDo = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
   <E, A>(cond: KleisliIO<F, E, A, boolean>) => (body: KleisliIO<F, E, A, A>): KleisliIO<F, E, A, A> => {
@@ -475,27 +475,127 @@ export const snd = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
  * @param M MonadThrow & Bifunctor instance
  */
 export const getInstancesFor = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) => ({
+  /**
+   * Applicative `of` function.
+   * Lift a value of type `B` into a context of `KleisliIO`.
+   * @param b Value of type `B`
+   */
   of: of(M),
+  /**
+   * Create a new instance of `Pure` computation.
+   * @param f Function to run
+   */
   pure: pure(M),
+  /**
+   * Create a new instance of `Impure` computation.
+   * @param catcher Function to transform the error from `Error` into `E`
+   * @param f Impure computation from `A` to `B` which may throw
+   */
   impure: impure(M),
+  /**
+   * Create a new `KleisliIO` computation from impure function which *you know* to never throw exceptions,
+   * or throw exceptions which should lead to termination fo the program.
+   * @param f Impure computation from `A` to `B`
+   */
   impureVoid: impureVoid(M),
+  /**
+   * Lift the impure computation into `KleisliIO` context.
+   * @param f Impure function from `A` to `B`
+   */
   liftK: liftK(M),
+  /**
+   * Monadic `chain` function.
+   * Apply function `f` to the result of current `KleisliIO<F, E, A, B>`, determining the next flow of computations.
+   * @param fa Basic KleisliIO computation
+   * @param f Function from `B` to `KleisliIO<F, E, A, C>`, which represents next sequential computation
+   */
   chain: chain(M),
+  /**
+   * Create a new `KleisliIO` computation which result in `b`.
+   * @param b Lazy value of type `B`
+   */
   point: point(M),
+  /**
+   * Fail with an error of type `E`.
+   * @param e Error of type `E`
+   */
   fail: fail(M),
+  /**
+   * Tuple swap, lifted in `KleisliIO` context.
+   */
   swap: swap(M),
+  /**
+   * Perform right-to-left Kleisli arrows compotions.
+   * @param second Second computation to apply
+   * @param first First computation to apply
+   */
   composeK: composeK(M),
+  /**
+   * Perform left-to-right Kleisli arrows compotions.
+   * @param first First computation to apply
+   * @param second Second computation to apply
+   */
   pipeK: pipeK(M),
+  /**
+   * Depending on the input of type `Either<A, C>`, execute either `l` or `r` branches.
+   * @param l Left branch of computation
+   * @param r Right branch of computation
+   */
   switchK: switchK(M),
+  /**
+   * Execute `l` and `r` computations and if both succeed, process the results with `f`.
+   * @param l First `KleisliIO` computation
+   * @param r Second `KleisliIO` computation
+   * @param f Function to process the results of both computations
+   */
   zipWith: zipWith(M),
+  /**
+   * Propagate the input unchanged.
+   */
   identity: identity(M),
+  /**
+   * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
+   * A flipped version of @see right.
+   * @param k Computation from `A` to `B`
+   */
   left: left(M),
+  /**
+   * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
+   * A flipped version of @see left.
+   * @param k Computation from `A` to `B`
+   */
   right: right(M),
+  /**
+   * Depending on the condition, propagate the original input through the left or right part of `Either`.
+   * @param cond Predicate for `A`
+   */
   test: test(M),
+  /**
+   * Depending on the condition, execute either `then` or `else`.
+   * @param cond Predicate for `A`
+   * @param then Computation to run if `cond` is `true`
+   * @param else_ Computation to run if `cond` is `false`
+   */
   ifThenElse: ifThenElse(M),
+  /**
+   * Simplified version of @see ifThenElse without the `else` part.
+   * @param cond Predicate for `A`
+   * @param then Computation to run if `cond` is `true`
+   */
   ifThen: ifThen(M),
+  /**
+   * While-loop: run `body` until `cond` is `true`.
+   * @param cond Predicate for `A`
+   * @param body Computation to run continuously until `cond` is `false`
+   */
   whileDo: whileDo(M),
+  /**
+   * Lifted version of `fst` tuple function.
+   */
   fst: fst(M),
+  /**
+   * Lifted version of `snd` tuple function.
+   */
   snd: snd(M),
 });
 
