@@ -1,5 +1,11 @@
 # Changelog
 
+# 0.2.0 – 2019-06-16
+### Added
+- Tests (closes #2)
+### Changed
+- `of` now expects input of type `B`, not `() => B`.
+
 # 0.1.1 - 2019-06-14
 ### Added
 - Convenience `getInstancesFor` method.
