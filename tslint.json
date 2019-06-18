@@ -3,7 +3,11 @@
     "tslint:recommended"
   ],
   "defaultSeverity": "error",
+  "rulesDirectory": [
+    "./node_modules/fp-ts/rules"
+  ],
   "rules": {
+    "obsolete": true,
     "no-console": [
       false
     ],

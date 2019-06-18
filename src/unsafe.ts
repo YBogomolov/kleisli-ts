@@ -14,8 +14,10 @@
  *  limitations under the License.
  */
 
+import { fold } from 'fp-ts/lib/Either';
 import { identity } from 'fp-ts/lib/function';
 import { IOEither } from 'fp-ts/lib/IOEither';
+import { pipe } from 'fp-ts/lib/pipeable';
 import { TaskEither } from 'fp-ts/lib/TaskEither';
 
 /**
@@ -34,8 +36,10 @@ import { TaskEither } from 'fp-ts/lib/TaskEither';
  *
  * @param ie `TaskEither` to run
  */
-export const unsafeRunTE = async <E, A>(ie: TaskEither<E, A>): Promise<A> =>
-  (await ie.run()).fold((e) => { throw e; }, identity);
+export const unsafeRunTE = async <E, A>(ie: TaskEither<E, A>): Promise<A> => pipe(
+  (await ie.run()),
+  fold((e) => { throw e; }, identity),
+);
 
 /**
  * Unfolds the `IOEither` structure and throws `E` as an exception, or returns `A` as a result.
@@ -53,4 +57,7 @@ export const unsafeRunTE = async <E, A>(ie: TaskEither<E, A>): Promise<A> =>
  *
  * @param ie `IOEither` to run
  */
-export const unsafeRunIE = <E, A>(ie: IOEither<E, A>): A => ie.run().fold((e) => { throw e; }, identity);
+export const unsafeRunIE = <E, A>(ie: IOEither<E, A>): A => pipe(
+  ie.run(),
+  fold((e) => { throw e; }, identity),
+);

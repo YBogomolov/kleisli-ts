@@ -23,13 +23,14 @@
 // tslint:enable:max-line-length
 
 import { Bifunctor2 } from 'fp-ts/lib/Bifunctor';
-import { Either, left as eitherLeft, right as eitherRight } from 'fp-ts/lib/Either';
+import { Either, fold, left as eitherLeft, right as eitherRight } from 'fp-ts/lib/Either';
 import { compose } from 'fp-ts/lib/function';
-import { Type2, URIS2 } from 'fp-ts/lib/HKT';
+import { Kind2, URIS2 } from 'fp-ts/lib/HKT';
 import { MonadThrow2 } from 'fp-ts/lib/MonadThrow';
+import { pipe } from 'fp-ts/lib/pipeable';
 
 /**
- * KleisliIO – an effectful function from `A` to `Type2<F, E, B>`.
+ * KleisliIO – an effectful function from `A` to `Kind2<F, E, B>`.
  * For more intuition about Kleisli arrows please @see http://www.cse.chalmers.se/~rjmh/Papers/arrows.pdf
  *
  * @template A domain type
@@ -43,7 +44,7 @@ export abstract class KleisliIO<F extends URIS2, E, A, B> {
    * Executes current `KleisliIO`, yielding IO of either ann error of type `E` or value of type `B`.
    * @param a Value of type `A`
    */
-  abstract run(a: A): Type2<F, E, B>;
+  abstract run(a: A): Kind2<F, E, B>;
 
   abstract M: MonadThrow2<F> & Bifunctor2<F>;
 
@@ -165,7 +166,7 @@ class KleisliIOError<E> extends Error {
 }
 
 /**
- * A pure functional computation from `A` to `Type2<F, E, B>`, which **never** throws in runtime.
+ * A pure functional computation from `A` to `Kind2<F, E, B>`, which **never** throws in runtime.
  *
  * @see KleisliIO
  *
@@ -175,9 +176,9 @@ class KleisliIOError<E> extends Error {
  */
 class Pure<F extends URIS2, E, A, B> extends KleisliIO<F, E, A, B> {
   readonly tag = 'Pure';
-  constructor(readonly M: MonadThrow2<F> & Bifunctor2<F>, readonly _run: (a: A) => Type2<F, E, B>) { super(); }
+  constructor(readonly M: MonadThrow2<F> & Bifunctor2<F>, readonly _run: (a: A) => Kind2<F, E, B>) { super(); }
 
-  run = (a: A): Type2<F, E, B> => this._run(a);
+  run = (a: A): Kind2<F, E, B> => this._run(a);
 }
 
 /**
@@ -193,7 +194,7 @@ class Impure<F extends URIS2, E, A, B> extends KleisliIO<F, E, A, B> {
   readonly tag = 'Impure';
   constructor(readonly M: MonadThrow2<F> & Bifunctor2<F>, readonly _run: (a: A) => B) { super(); }
 
-  run = (a: A): Type2<F, E, B> => {
+  run = (a: A): Kind2<F, E, B> => {
     try {
       const b = this._run(a);
       return this.M.of(b);
@@ -223,7 +224,7 @@ class Compose<F extends URIS2, E, A, B, C> extends KleisliIO<F, E, A, C> {
     readonly f: KleisliIO<F, E, A, B>,
   ) { super(); }
 
-  run = (a: A): Type2<F, E, C> => this.M.chain(this.f.run(a), this.g.run);
+  run = (a: A): Kind2<F, E, C> => this.M.chain(this.f.run(a), this.g.run);
 }
 
 const isImpure = <F extends URIS2, E, A, B>(a: KleisliIO<F, E, A, B>): a is Impure<F, E, A, B> => a.tag === 'Impure';
@@ -233,7 +234,7 @@ const isImpure = <F extends URIS2, E, A, B>(a: KleisliIO<F, E, A, B>): a is Impu
  * @param f Function to run
  */
 export const pure = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(f: (a: A) => Type2<F, E, B>): KleisliIO<F, E, A, B> => new Pure<F, E, A, B>(M, f);
+  <E, A, B>(f: (a: A) => Kind2<F, E, B>): KleisliIO<F, E, A, B> => new Pure<F, E, A, B>(M, f);
 
 /**
  * Create a new instance of `Impure` computation.
@@ -338,14 +339,20 @@ export const pipeK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
 export const switchK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
   <E, A, B, C>(l: KleisliIO<F, E, A, B>, r: KleisliIO<F, E, C, B>): KleisliIO<F, E, Either<A, C>, B> =>
     isImpure(l) && isImpure(r) ?
-      new Impure<F, E, Either<A, C>, B>(M, (a) => a.fold(
-        (al) => l._run(al),
-        (ar) => r._run(ar),
-      )) :
-      pure(M)((a) => a.fold(
-        (al) => l.run(al),
-        (ar) => r.run(ar),
-      ));
+      new Impure<F, E, Either<A, C>, B>(M, (a) => pipe(
+        a,
+        fold(
+          (al) => l._run(al),
+          (ar) => r._run(ar),
+        )),
+      ) :
+      pure(M)((a) => pipe(
+        a,
+        fold(
+          (al) => l.run(al),
+          (ar) => r.run(ar),
+        )),
+      );
 
 /**
  * Execute `l` and `r` computations and if both succeed, process the results with `f`.
@@ -374,14 +381,14 @@ export const identity = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
 export const left = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
   <E, A, B, C>(k: KleisliIO<F, E, A, B>): KleisliIO<F, E, Either<A, C>, Either<B, C>> =>
     isImpure(k) ?
-      new Impure(M, (a) => a.fold(
+      new Impure(M, (a) => pipe(a, fold(
         (l) => eitherLeft(k._run(l)),
         (r) => eitherRight(r),
-      )) :
-      pure(M)((a) => a.fold(
+      ))) :
+      pure(M)((a) => pipe(a, fold(
         (l) => M.map(k.run(l), (x) => eitherLeft(x)),
         (r) => M.of(eitherRight(r)),
-      ));
+      )));
 
 /**
  * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
@@ -391,14 +398,14 @@ export const left = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
 export const right = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
   <E, A, B, C>(k: KleisliIO<F, E, A, B>): KleisliIO<F, E, Either<C, A>, Either<C, B>> =>
     isImpure(k) ?
-      new Impure(M, (a) => a.fold(
+      new Impure(M, (a) => pipe(a, fold(
         (l) => eitherLeft(l),
         (r) => eitherRight(k._run(r)),
-      )) :
-      pure(M)((a) => a.fold(
+      ))) :
+      pure(M)((a) => pipe(a, fold(
         (l) => M.of(eitherLeft(l)),
         (r) => M.map(k.run(r), (x) => eitherRight(x)),
-      ));
+      )));
 
 /**
  * Depending on the condition, propagate the original input through the left or right part of `Either`.

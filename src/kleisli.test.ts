@@ -1,7 +1,7 @@
 // tslint:disable:no-unused-expression
 
 import { expect } from 'chai';
-import { either, left, right, URI } from 'fp-ts/lib/Either';
+import { either, isLeft, isRight, left, right, URI } from 'fp-ts/lib/Either';
 import { compose, identity } from 'fp-ts/lib/function';
 
 import { getInstancesFor, KleisliIO } from '.';
@@ -65,7 +65,7 @@ describe('KleisliIO suite', () => {
     it('of', () => {
       const m = K.of<never, void, number>(42);
 
-      expect(m.run().isRight()).to.be.true;
+      expect(isRight(m.run())).to.be.true;
       expect(m.run().value).to.equal(42);
     });
 
@@ -74,9 +74,9 @@ describe('KleisliIO suite', () => {
         (s: string) => s.length > 0 ? right(s.toLocaleUpperCase() + '!') : left(new Error('empty string')),
       );
 
-      expect(m.run('aaaa').isRight()).to.be.true;
+      expect(isRight(m.run('aaaa'))).to.be.true;
       expect(m.run('aaaa').value).to.equal('AAAA!');
-      expect(m.run('').isLeft()).to.be.true;
+      expect(isLeft(m.run(''))).to.be.true;
       expect(m.run('').value).to.be.an.instanceOf(Error);
       expect(m.run('').value as Error).to.have.property('message').equal('empty string');
     });
@@ -90,9 +90,9 @@ describe('KleisliIO suite', () => {
       };
       const m = K.impure(identity)(f);
 
-      expect(m.run('aaaa').isRight()).to.be.true;
+      expect(isRight(m.run('aaaa'))).to.be.true;
       expect(m.run('aaaa').value).to.equal('AAAA!');
-      expect(m.run('').isLeft()).to.be.true;
+      expect(isLeft(m.run(''))).to.be.true;
       expect(m.run('').value).to.be.an.instanceOf(Error);
       expect(m.run('').value as Error).to.have.property('message').equal('empty string');
     });
@@ -120,9 +120,9 @@ describe('KleisliIO suite', () => {
       const f = (s: string) => s.length;
       const m = K.liftK<never, string, number>(f);
 
-      expect(m.run('').isRight()).to.be.true;
+      expect(isRight(m.run(''))).to.be.true;
       expect(m.run('').value).to.equal(0);
-      expect(m.run('aaaa').isRight()).to.be.true;
+      expect(isRight(m.run('aaaa'))).to.be.true;
       expect(m.run('aaaa').value).to.equal(4);
     });
 
@@ -131,9 +131,9 @@ describe('KleisliIO suite', () => {
         K.of<Error, void, number>(s.length) :
         K.fail<Error, void, number>(new Error('empty string'));
 
-      expect(K.of<Error, void, string>('aaa').chain(f).run().isRight()).to.be.true;
+      expect(isRight(K.of<Error, void, string>('aaa').chain(f).run())).to.be.true;
       expect(K.of<Error, void, string>('aaa').chain(f).run().value).to.equal(3);
-      expect(K.of<Error, void, string>('').chain(f).run().isLeft()).to.be.true;
+      expect(isLeft(K.of<Error, void, string>('').chain(f).run())).to.be.true;
       expect(K.of<Error, void, string>('').chain(f).run().value as Error)
         .to.be.an.instanceOf(Error)
         .and
@@ -143,14 +143,14 @@ describe('KleisliIO suite', () => {
     it('point', () => {
       const m = K.point<never, void, number>(() => 42);
 
-      expect(m.run().isRight()).to.be.true;
+      expect(isRight(m.run())).to.be.true;
       expect(m.run().value).to.equal(42);
     });
 
     it('fail', () => {
       const m = K.fail(new Error('fail'));
 
-      expect(m.run({}).isLeft()).to.be.true;
+      expect(isLeft(m.run({}))).to.be.true;
       expect(m.run({}).value).to.be.an.instanceOf(Error).and.to.have.property('message').equal('fail');
     });
 
@@ -166,9 +166,9 @@ describe('KleisliIO suite', () => {
         (s) => s.length > 0 ? right(s.length) : left(new Error('empty string')),
       );
 
-      expect(K.composeK(g, f).run('aaa').isRight()).to.be.true;
+      expect(isRight(K.composeK(g, f).run('aaa'))).to.be.true;
       expect(K.composeK(g, f).run('aaa').value).to.equal(4);
-      expect(K.composeK(g, f).run('').isLeft()).to.be.true;
+      expect(isLeft(K.composeK(g, f).run(''))).to.be.true;
       expect(K.composeK(g, f).run('').value)
         .to.be.an.instanceOf(Error)
         .and
@@ -183,9 +183,9 @@ describe('KleisliIO suite', () => {
         (s) => s.length > 0 ? right(s.length) : left(new Error('empty string')),
       );
 
-      expect(K.pipeK(f, g).run('aaa').isRight()).to.be.true;
+      expect(isRight(K.pipeK(f, g).run('aaa'))).to.be.true;
       expect(K.pipeK(f, g).run('aaa').value).to.equal(4);
-      expect(K.pipeK(f, g).run('').isLeft()).to.be.true;
+      expect(isLeft(K.pipeK(f, g).run(''))).to.be.true;
       expect(K.pipeK(f, g).run('').value)
         .to.be.an.instanceOf(Error)
         .and
@@ -198,9 +198,9 @@ describe('KleisliIO suite', () => {
         K.liftK((n) => n > 0),
       );
 
-      expect(m.run(right(42)).isRight()).to.be.true;
+      expect(isRight(m.run(right(42)))).to.be.true;
       expect(m.run(right(42)).value).to.be.true;
-      expect(m.run(left('')).isRight()).to.be.true;
+      expect(isRight(m.run(left('')))).to.be.true;
       expect(m.run(left('')).value).to.be.false;
     });
 
@@ -221,43 +221,43 @@ describe('KleisliIO suite', () => {
         }
       });
 
-      expect(m.run('a').isRight()).to.be.true;
+      expect(isRight(m.run('a'))).to.be.true;
       expect(m.run('a').value).to.equal('String starts with "a"');
-      expect(m.run('a!').isRight()).to.be.true;
+      expect(isRight(m.run('a!'))).to.be.true;
       expect(m.run('a!').value).to.equal('String starts with "a" and ends with "!"');
-      expect(m.run('foo').isRight()).to.be.true;
+      expect(isRight(m.run('foo'))).to.be.true;
       expect(m.run('foo').value).to.equal('String neither starts with "a", nor ends with "!"');
-      expect(m.run('foo!').isRight()).to.be.true;
+      expect(isRight(m.run('foo!'))).to.be.true;
       expect(m.run('foo!').value).to.equal('String ends with "!"');
     });
 
     it('identity', () => {
-      expect(K.identity().run(42).isRight()).to.be.true;
+      expect(isRight(K.identity().run(42))).to.be.true;
       expect(K.identity().run(42).value).to.equal(42);
     });
 
     it('left', () => {
       const m = K.left<never, number, string, number>(K.liftK((n) => n.toString()));
-      expect(m.run(right(42)).isRight()).to.be.true;
+      expect(isRight(m.run(right(42)))).to.be.true;
       expect(m.run(right(42)).value).to.deep.equal(right(42));
-      expect(m.run(left(41)).isRight()).to.be.true;
+      expect(isRight(m.run(left(41)))).to.be.true;
       expect(m.run(left(41)).value).to.deep.equal(left('41'));
     });
 
     it('right', () => {
       const m = K.right<never, number, string, number>(K.liftK((n) => n.toString()));
-      expect(m.run(right(42)).isRight()).to.be.true;
+      expect(isRight(m.run(right(42)))).to.be.true;
       expect(m.run(right(42)).value).to.deep.equal(right('42'));
-      expect(m.run(left(41)).isRight()).to.be.true;
+      expect(isRight(m.run(left(41)))).to.be.true;
       expect(m.run(left(41)).value).to.deep.equal(left(41));
     });
 
     it('test', () => {
       const m = K.test(K.liftK<never, number, boolean>((n) => n % 2 === 0));
 
-      expect(m.run(42).value.isLeft()).to.be.true;
+      expect(isLeft(m.run(42).value)).to.be.true;
       expect(m.run(42).value.value).to.equal(42);
-      expect(m.run(41).value.isRight()).to.be.true;
+      expect(isRight(m.run(41).value)).to.be.true;
       expect(m.run(41).value.value).to.equal(41);
     });
 
@@ -267,9 +267,9 @@ describe('KleisliIO suite', () => {
         (K.liftK((n) => `is even: ${n}`))
         (K.liftK((n) => `is odd: ${n}`));
 
-      expect(m.run(42).isRight()).to.be.true;
+      expect(isRight(m.run(42))).to.be.true;
       expect(m.run(42).value).to.equal('is even: 42');
-      expect(m.run(41).isRight()).to.be.true;
+      expect(isRight(m.run(41))).to.be.true;
       expect(m.run(41).value).to.equal('is odd: 41');
     });
 
@@ -278,9 +278,9 @@ describe('KleisliIO suite', () => {
         (K.liftK((n) => n % 2 === 1))
         (K.liftK((n) => n + 1));
 
-      expect(m.run(41).isRight()).to.be.true;
+      expect(isRight(m.run(41))).to.be.true;
       expect(m.run(41).value).to.equal(42);
-      expect(m.run(42).isRight()).to.be.true;
+      expect(isRight(m.run(42))).to.be.true;
       expect(m.run(42).value).to.equal(42);
     });
 
@@ -295,18 +295,18 @@ describe('KleisliIO suite', () => {
 
       const res = m.run(4);
 
-      expect(res.isRight()).to.be.true;
+      expect(isRight(res)).to.be.true;
       expect(res.value).to.equal(10);
       expect(callCount).to.equal(6);
     });
 
     it('fst', () => {
-      expect(K.fst().run([1, true]).isRight()).to.be.true;
+      expect(isRight(K.fst().run([1, true]))).to.be.true;
       expect(K.fst().run([1, true]).value).to.equal(1);
     });
 
     it('snd', () => {
-      expect(K.snd().run([1, true]).isRight()).to.be.true;
+      expect(isRight(K.snd().run([1, true]))).to.be.true;
       expect(K.snd().run([1, true]).value).to.be.true;
     });
   });
