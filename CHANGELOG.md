@@ -1,5 +1,9 @@
 # Changelog
 
+# 0.2.1 - 2019-06-18
+### Changed
+- Migrate to `fp-ts` v1.19.0
+
 # 0.2.0 – 2019-06-16
 ### Added
 - Tests (closes #2)

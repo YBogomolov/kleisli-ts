@@ -1,6 +1,6 @@
 {
   "name": "kleisli-ts",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Kleisli IO for TypeScript",
   "files": [
     "lib"
