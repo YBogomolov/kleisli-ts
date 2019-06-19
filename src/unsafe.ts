@@ -37,7 +37,7 @@ import { TaskEither } from 'fp-ts/lib/TaskEither';
  * @param ie `TaskEither` to run
  */
 export const unsafeRunTE = async <E, A>(ie: TaskEither<E, A>): Promise<A> => pipe(
-  (await ie.run()),
+  (await ie()),
   fold((e) => { throw e; }, identity),
 );
 
@@ -58,6 +58,6 @@ export const unsafeRunTE = async <E, A>(ie: TaskEither<E, A>): Promise<A> => pip
  * @param ie `IOEither` to run
  */
 export const unsafeRunIE = <E, A>(ie: IOEither<E, A>): A => pipe(
-  ie.run(),
+  ie(),
   fold((e) => { throw e; }, identity),
 );
