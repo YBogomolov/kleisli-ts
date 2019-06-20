@@ -1,1 +1,1 @@
-export * from './bikleisli';
+export * from './kleisli-io';

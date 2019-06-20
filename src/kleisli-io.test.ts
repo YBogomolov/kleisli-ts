@@ -19,7 +19,7 @@ import { expect } from 'chai';
 import { either, isLeft, isRight, left, right, URI } from 'fp-ts/lib/Either';
 import { compose, identity } from 'fp-ts/lib/function';
 
-import { BiKleisli, getInstancesFor } from './bikleisli';
+import { getInstancesFor, KleisliIO } from './kleisli-io';
 
 const K = getInstancesFor(either);
 
@@ -27,8 +27,8 @@ describe('BiKleisli suite', () => {
   describe('Functor laws', () => {
     it('should preserve identity', () => {
       // fmal id ≡ id
-      const fa: BiKleisli<URI, string, boolean, string> = K.pure((a) => a ? right(String(a)) : left(String(a)));
-      const fa1: BiKleisli<URI, string, boolean, string> = fa.map(identity);
+      const fa: KleisliIO<URI, string, boolean, string> = K.pure((a) => a ? right(String(a)) : left(String(a)));
+      const fa1: KleisliIO<URI, string, boolean, string> = fa.map(identity);
 
       expect(fa.run(true)).to.deep.equal(fa1.run(true));
       expect(fa.run(false)).to.deep.equal(fa1.run(false));
@@ -36,7 +36,7 @@ describe('BiKleisli suite', () => {
 
     it('should preserve composition of morphisms', () => {
       // fmap (f . g) ≡ fmap f . fmap g
-      const fa: BiKleisli<URI, string, boolean, string> = K.pure((a) => a ? right(String(a)) : left(String(a)));
+      const fa: KleisliIO<URI, string, boolean, string> = K.pure((a) => a ? right(String(a)) : left(String(a)));
 
       const f = (a: string) => `${a}!`;
       const g = (a: string) => a.length;
