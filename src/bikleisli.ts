@@ -24,7 +24,7 @@
 
 import { Bifunctor2 } from 'fp-ts/lib/Bifunctor';
 import { Either, fold, left as eitherLeft, right as eitherRight } from 'fp-ts/lib/Either';
-import { compose } from 'fp-ts/lib/function';
+import { flow } from 'fp-ts/lib/function';
 import { Kind2, URIS2 } from 'fp-ts/lib/HKT';
 import { MonadThrow2 } from 'fp-ts/lib/MonadThrow';
 import { pipe } from 'fp-ts/lib/pipeable';
@@ -319,7 +319,7 @@ export const swap = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
 export const composeK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
   <E, A, B, C>(second: BiKleisli<F, E, B, C>, first: BiKleisli<F, E, A, B>): BiKleisli<F, E, A, C> =>
     isImpure(second) && isImpure(first) ?
-      new Impure(M, compose(second._run, first._run)) :
+      new Impure(M, flow(first._run, second._run)) :
       new Compose(M, second, first);
 
 /**

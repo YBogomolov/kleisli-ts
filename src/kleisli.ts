@@ -15,7 +15,7 @@
  */
 
 import { Either, fold, left as eitherLeft, right as eitherRight } from 'fp-ts/lib/Either';
-import { compose } from 'fp-ts/lib/function';
+import { flow } from 'fp-ts/lib/function';
 import { Kind, URIS } from 'fp-ts/lib/HKT';
 import { Monad1 } from 'fp-ts/lib/Monad';
 import { pipe } from 'fp-ts/lib/pipeable';
@@ -282,7 +282,7 @@ export const swap = <F extends URIS>(M: Monad1<F>) =>
 export const composeK = <F extends URIS>(M: Monad1<F>) =>
   <A, B, C>(second: Kleisli<F, B, C>, first: Kleisli<F, A, B>): Kleisli<F, A, C> =>
     isImpure(second) && isImpure(first) ?
-      new Impure(M, compose(second._run, first._run)) :
+      new Impure(M, flow(first._run, second._run)) :
       new Compose(M, second, first);
 
 /**
