@@ -29,6 +29,8 @@ import { Kind2, URIS2 } from 'fp-ts/lib/HKT';
 import { MonadThrow2 } from 'fp-ts/lib/MonadThrow';
 import { pipe } from 'fp-ts/lib/pipeable';
 
+import { KleisliError } from './error';
+
 /**
  * KleisliIO – an effectful function from `A` to `Kind2<F, E, B>`.
  * For more intuition about Kleisli arrows please @see http://www.cse.chalmers.se/~rjmh/Papers/arrows.pdf
@@ -159,13 +161,6 @@ export abstract class KleisliIO<F extends URIS2, E, A, B> {
 }
 
 /**
- * Specialized error type for KleisliIO
- */
-class KleisliIOError<E> extends Error {
-  constructor(readonly error: E) { super(String(error)); }
-}
-
-/**
  * A pure functional computation from `A` to `Kind2<F, E, B>`, which **never** throws in runtime.
  *
  * @see KleisliIO
@@ -199,7 +194,7 @@ class Impure<F extends URIS2, E, A, B> extends KleisliIO<F, E, A, B> {
       const b = this._run(a);
       return this.M.of(b);
     } catch (e) {
-      if (e instanceof KleisliIOError) {
+      if (e instanceof KleisliError) {
         return this.M.throwError(e.error);
       }
       throw e;
@@ -249,7 +244,7 @@ export const impure = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
         return f(a);
       } catch (error) {
         if (catcher(error) !== undefined) {
-          throw new KleisliIOError<E>(catcher(error));
+          throw new KleisliError<E>(catcher(error));
         }
         throw error;
       }
@@ -303,7 +298,7 @@ export const of = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
  * @param e Error of type `E`
  */
 export const fail = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(e: E): KleisliIO<F, E, A, B> => new Impure(M, () => { throw new KleisliIOError(e); });
+  <E, A, B>(e: E): KleisliIO<F, E, A, B> => new Impure(M, () => { throw new KleisliError(e); });
 
 /**
  * Tuple swap, lifted in `KleisliIO` context.

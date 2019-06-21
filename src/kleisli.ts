@@ -20,6 +20,8 @@ import { Kind, URIS } from 'fp-ts/lib/HKT';
 import { Monad1 } from 'fp-ts/lib/Monad';
 import { pipe } from 'fp-ts/lib/pipeable';
 
+import { KleisliError } from './error';
+
 /**
  * Kleisli – an effectful function from `A` to `Kind<F, B>`.
  * For more intuition about Kleisli arrows please @see http://www.cse.chalmers.se/~rjmh/Papers/arrows.pdf
@@ -136,13 +138,6 @@ export abstract class Kleisli<F extends URIS, A, B> {
   asEffect(): Kleisli<F, A, A> {
     return this.first().andThen(snd(this.M)());
   }
-}
-
-/**
- * Specialized error type for Kleisli
- */
-class KleisliError<E> extends Error {
-  constructor(readonly error: E) { super(String(error)); }
 }
 
 /**
