@@ -25,9 +25,10 @@ import { Distributes22 } from './Distributes';
 import { KleisliError } from './error';
 
 /**
- * BiKleisliIO – an effectful function from `Find<F, A>` to `Kind2<G, B>`.
+ * BiKleisliIO – an effectful function from `Kind<F, E, A>` to `Kind2<G, E, B>`.
  * For more intuition about Kleisli arrows please @see http://www.cse.chalmers.se/~rjmh/Papers/arrows.pdf
  *
+ * @template E error type
  * @template A domain type
  * @template B codomain type
  */
@@ -36,7 +37,7 @@ export abstract class BiKleisliIO<F extends URIS2, G extends URIS2, E, A, B> {
 
   /**
    * Executes current `BiKleisliIO`, yielding IO of either ann error of type `E` or value of type `B`.
-   * @param a Value of type `A`
+   * @param a Value of type `Kind<F, E, A>`
    */
   abstract run(a: Kind2<F, E, A>): Kind2<G, E, B>;
 
@@ -64,8 +65,9 @@ export abstract class BiKleisliIO<F extends URIS2, G extends URIS2, E, A, B> {
 
   /**
    * Monadic `chain` function.
-   * Apply function `f` to the result of current `Kleisli<F, A, B>`, determining the next flow of computations.
-   * @param f Function from `B` to `Kleisli<F, A, C>`, which represents next sequential computation.
+   * Apply function `f` to the result of current `BiKleisliIO<F, G, E, A, B>`,
+   * determining the next flow of computations.
+   * @param f Function from `B` to `BiKleisliIO<F, G, E, A, C>`, which represents next sequential computation.
    */
   chain<C>(f: (b: B) => BiKleisliIO<F, G, E, A, C>) {
     return pure(this.W, this.M, this.T)<E, A, C>((a) => this.M.chain(this.run(a), (b) => f(b).run(a)));
@@ -254,9 +256,9 @@ export const liftK = <F extends URIS2, G extends URIS2>(W: Comonad2<F>, M: Monad
 
 /**
  * Monadic `chain` function.
- * Apply function `f` to the result of current `Kleisli<F, A, B>`, determining the next flow of computations.
+ * Apply function `f` to the result of current `BiKleisliIO<F, G, E, A, B>`, determining the next flow of computations.
  * @param fa Basic Kleisli computation
- * @param f Function from `B` to `Kleisli<F, A, C>`, which represents next sequential computation
+ * @param f Function from `B` to `BiKleisliIO<F, G, E, A, C>`, which represents next sequential computation
  */
 export const chain = <F extends URIS2, G extends URIS2>(W: Comonad2<F>, M: Monad2<G>, T: Distributes22<F, G>) =>
   <E, A, B, C>(fa: BiKleisliIO<F, G, E, A, B>, f: (b: B) => BiKleisliIO<F, G, E, A, C>): BiKleisliIO<F, G, E, A, C> =>

@@ -25,7 +25,7 @@ import { Distributes11 } from './Distributes';
 import { KleisliError } from './error';
 
 /**
- * BiKleisli – an effectful function from `Find<F, A>` to `Kind<G, B>`.
+ * BiKleisli – an effectful function from `Kind<F, A>` to `Kind<G, B>`.
  * For more intuition about Kleisli arrows please @see http://www.cse.chalmers.se/~rjmh/Papers/arrows.pdf
  *
  * @template A domain type
@@ -36,7 +36,7 @@ export abstract class BiKleisli<F extends URIS, G extends URIS, A, B> {
 
   /**
    * Executes current `BiKleisli`, yielding IO of either ann error of type `E` or value of type `B`.
-   * @param a Value of type `A`
+   * @param a Value of type `Kind<F, A>`
    */
   abstract run(a: Kind<F, A>): Kind<G, B>;
 
@@ -64,8 +64,8 @@ export abstract class BiKleisli<F extends URIS, G extends URIS, A, B> {
 
   /**
    * Monadic `chain` function.
-   * Apply function `f` to the result of current `Kleisli<F, A, B>`, determining the next flow of computations.
-   * @param f Function from `B` to `Kleisli<F, A, C>`, which represents next sequential computation.
+   * Apply function `f` to the result of current `BiKleisli<F, G, A, B>`, determining the next flow of computations.
+   * @param f Function from `B` to `BiKleisli<F, G, A, C>`, which represents next sequential computation.
    */
   chain<C>(f: (b: B) => BiKleisli<F, G, A, C>) {
     return pure(this.W, this.M, this.T)<A, C>((a) => this.M.chain(this.run(a), (b) => f(b).run(a)));
@@ -145,9 +145,9 @@ export abstract class BiKleisli<F extends URIS, G extends URIS, A, B> {
 }
 
 /**
- * A pure functional computation from `A` to `Kind<F, B>`, which **never** throws in runtime.
+ * A pure functional computation from `Kind<F, A>` to `Kind<G, B>`, which **never** throws in runtime.
  *
- * @see Kleisli
+ * @see BiKleisli
  *
  * @template A domain type
  * @template B codomain type
@@ -165,9 +165,9 @@ class Pure<F extends URIS, G extends URIS, A, B> extends BiKleisli<F, G, A, B> {
 }
 
 /**
- * An impure effectful computation from `A` to `B`, which may throw an exception of type `E`
+ * An impure effectful computation from `A` to `B`
  *
- * @see Kleisli
+ * @see BiKleisli
  *
  * @template A domain type
  * @template B codomain type
@@ -187,7 +187,7 @@ class Impure<F extends URIS, G extends URIS, A, B> extends BiKleisli<F, G, A, B>
 /**
  * A right-to-left composition of two Kleisli functions.
  *
- * @see Kleisli
+ * @see BiKleisli
  *
  * @template A domain type
  * @template B codomain type
@@ -251,9 +251,9 @@ export const liftK = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<
 
 /**
  * Monadic `chain` function.
- * Apply function `f` to the result of current `Kleisli<F, A, B>`, determining the next flow of computations.
+ * Apply function `f` to the result of current `BiKleisli<F, G, A, B>`, determining the next flow of computations.
  * @param fa Basic Kleisli computation
- * @param f Function from `B` to `Kleisli<F, A, C>`, which represents next sequential computation
+ * @param f Function from `B` to `BiKleisli<F, G, A, C>`, which represents next sequential computation
  */
 export const chain = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
   <A, B, C>(fa: BiKleisli<F, G, A, B>, f: (b: B) => BiKleisli<F, G, A, C>): BiKleisli<F, G, A, C> =>

@@ -1,5 +1,9 @@
 import { HKT, Kind, Kind2, Kind3, URIS, URIS2, URIS3 } from 'fp-ts/lib/HKT';
 
+/**
+ * Represents distributive law between two HKTs:
+ * F<G<A>> => G<F<A>>
+ */
 export type Distributes<F extends URIS, G extends URIS> =
   <A>(fga: HKT<F, HKT<G, A>>) => HKT<G, HKT<F, A>>;
 export type Distributes11<F extends URIS, G extends URIS> =
