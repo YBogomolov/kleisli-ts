@@ -16,7 +16,7 @@
 // tslint:disable:no-unused-expression
 
 import { expect } from 'chai';
-import { either, isLeft, isRight, left, Left, right, URI } from 'fp-ts/lib/Either';
+import { either, isLeft, isRight, left, Left, right, Right, URI } from 'fp-ts/lib/Either';
 import { flow, identity } from 'fp-ts/lib/function';
 
 import { getInstancesFor, KleisliIO } from './kleisli-io';
@@ -81,7 +81,7 @@ describe('BiKleisli suite', () => {
       const m = K.of<never, void, number>(42);
 
       expect(isRight(m.run())).to.be.true;
-      expect(m.run()).to.equal(42);
+      expect((m.run() as Right<number>).right).to.equal(42);
     });
 
     it('pure', () => {
@@ -90,7 +90,7 @@ describe('BiKleisli suite', () => {
       );
 
       expect(isRight(m.run('aaaa'))).to.be.true;
-      expect(m.run('aaaa')).to.equal('AAAA!');
+      expect((m.run('aaaa') as Right<string>).right).to.equal('AAAA!');
       expect(isLeft(m.run(''))).to.be.true;
       expect((m.run('') as Left<Error>).left)
         .to.be.an.instanceOf(Error)
@@ -108,7 +108,7 @@ describe('BiKleisli suite', () => {
       const m = K.impure(identity)(f);
 
       expect(isRight(m.run('aaaa'))).to.be.true;
-      expect(m.run('aaaa')).to.equal('AAAA!');
+      expect((m.run('aaaa') as Right<string>).right).to.equal('AAAA!');
       expect(isLeft(m.run(''))).to.be.true;
       expect((m.run('') as Left<Error>).left)
         .to.be.an.instanceOf(Error)
@@ -126,7 +126,7 @@ describe('BiKleisli suite', () => {
       const m = K.impureVoid(f);
 
       try {
-        expect(m.run(false)).to.be.true;
+        expect((m.run(false) as Right<boolean>).right).to.be.true;
         m.run(true);
         expect.fail();
       } catch (e) {
@@ -140,9 +140,9 @@ describe('BiKleisli suite', () => {
       const m = K.liftK<never, string, number>(f);
 
       expect(isRight(m.run(''))).to.be.true;
-      expect(m.run('')).to.equal(0);
+      expect((m.run('') as Right<number>).right).to.equal(0);
       expect(isRight(m.run('aaaa'))).to.be.true;
-      expect(m.run('aaaa')).to.equal(4);
+      expect((m.run('aaaa') as Right<number>).right).to.equal(4);
     });
 
     it('chain', () => {
