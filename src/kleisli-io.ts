@@ -222,22 +222,25 @@ class Compose<F extends URIS2, E, A, B, C> extends KleisliIO<F, E, A, C> {
   run = (a: A): Kind2<F, E, C> => this.M.chain(this.f.run(a), this.g.run);
 }
 
-const isImpure = <F extends URIS2, E, A, B>(a: KleisliIO<F, E, A, B>): a is Impure<F, E, A, B> => a.tag === 'Impure';
+function isImpure<F extends URIS2, E, A, B>(a: KleisliIO<F, E, A, B>): a is Impure<F, E, A, B> {
+  return a.tag === 'Impure';
+}
 
 /**
  * Create a new instance of `Pure` computation.
  * @param f Function to run
  */
-export const pure = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(f: (a: A) => Kind2<F, E, B>): KleisliIO<F, E, A, B> => new Pure<F, E, A, B>(M, f);
+export function pure<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B>(f: (a: A) => Kind2<F, E, B>): KleisliIO<F, E, A, B> => new Pure<F, E, A, B>(M, f);
+}
 
 /**
  * Create a new instance of `Impure` computation.
  * @param catcher Function to transform the error from `Error` into `E`
  * @param f Impure computation from `A` to `B` which may throw
  */
-export const impure = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E>(catcher: (e: Error) => E) => <A, B>(f: (a: A) => B): KleisliIO<F, E, A, B> => new Impure(
+export function impure<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E>(catcher: (e: Error) => E) => <A, B>(f: (a: A) => B): KleisliIO<F, E, A, B> => new Impure(
     M,
     (a: A) => {
       try {
@@ -250,6 +253,7 @@ export const impure = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
       }
     },
   );
+}
 
 const voidCatcher = (e: Error): never => { throw e; };
 
@@ -258,15 +262,17 @@ const voidCatcher = (e: Error): never => { throw e; };
  * or throw exceptions which should lead to termination fo the program.
  * @param f Impure computation from `A` to `B`
  */
-export const impureVoid = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <A, B>(f: (a: A) => B): KleisliIO<F, never, A, B> => impure(M)(voidCatcher)(f);
+export function impureVoid<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <A, B>(f: (a: A) => B): KleisliIO<F, never, A, B> => impure(M)(voidCatcher)(f);
+}
 
 /**
  * Lift the impure computation into `KleisliIO` context.
  * @param f Impure function from `A` to `B`
  */
-export const liftK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(f: (a: A) => B): KleisliIO<F, E, A, B> => new Impure(M, f);
+export function liftK<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B>(f: (a: A) => B): KleisliIO<F, E, A, B> => new Impure(M, f);
+}
 
 /**
  * Monadic `chain` function.
@@ -274,65 +280,72 @@ export const liftK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
  * @param fa Basic KleisliIO computation
  * @param f Function from `B` to `KleisliIO<F, E, A, C>`, which represents next sequential computation
  */
-export const chain = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B, C>(fa: KleisliIO<F, E, A, B>, f: (b: B) => KleisliIO<F, E, A, C>): KleisliIO<F, E, A, C> =>
+export function chain<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B, C>(fa: KleisliIO<F, E, A, B>, f: (b: B) => KleisliIO<F, E, A, C>): KleisliIO<F, E, A, C> =>
     pure(M)<E, A, C>((a) => M.chain(fa.run(a), (b) => f(b).run(a)));
+}
 
 /**
  * Create a new `KleisliIO` computation which result in `b`.
  * @param b Lazy value of type `B`
  */
-export const point = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(b: () => B): KleisliIO<F, E, A, B> => liftK(M)(b);
+export function point<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B>(b: () => B): KleisliIO<F, E, A, B> => liftK(M)(b);
+}
 
 /**
  * Applicative `of` function.
  * Lift a value of type `B` into a context of `KleisliIO`.
  * @param b Value of type `B`
  */
-export const of = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(b: B): KleisliIO<F, E, A, B> => liftK(M)(() => b);
+export function of<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B>(b: B): KleisliIO<F, E, A, B> => liftK(M)(() => b);
+}
 
 /**
  * Fail with an error of type `E`.
  * @param e Error of type `E`
  */
-export const fail = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(e: E): KleisliIO<F, E, A, B> => new Impure(M, () => { throw new KleisliError(e); });
+export function fail<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B>(e: E): KleisliIO<F, E, A, B> => new Impure(M, () => { throw new KleisliError(e); });
+}
 
 /**
  * Tuple swap, lifted in `KleisliIO` context.
  */
-export const swap = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(): KleisliIO<F, E, [A, B], [B, A]> => liftK(M)(([a, b]) => [b, a]);
+export function swap<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B>(): KleisliIO<F, E, [A, B], [B, A]> => liftK(M)(([a, b]) => [b, a]);
+}
 
 /**
  * Perform right-to-left Kleisli arrows compotions.
  * @param second Second computation to apply
  * @param first First computation to apply
  */
-export const composeK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B, C>(second: KleisliIO<F, E, B, C>, first: KleisliIO<F, E, A, B>): KleisliIO<F, E, A, C> =>
+export function composeK<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B, C>(second: KleisliIO<F, E, B, C>, first: KleisliIO<F, E, A, B>): KleisliIO<F, E, A, C> =>
     isImpure(second) && isImpure(first) ?
       new Impure(M, flow(first._run, second._run)) :
       new Compose(M, second, first);
+}
 
 /**
  * Perform left-to-right Kleisli arrows compotions.
  * @param first First computation to apply
  * @param second Second computation to apply
  */
-export const pipeK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B, C>(first: KleisliIO<F, E, A, B>, second: KleisliIO<F, E, B, C>): KleisliIO<F, E, A, C> =>
+export function pipeK<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B, C>(first: KleisliIO<F, E, A, B>, second: KleisliIO<F, E, B, C>): KleisliIO<F, E, A, C> =>
     composeK(M)(second, first);
+}
 
 /**
  * Depending on the input of type `Either<A, C>`, execute either `l` or `r` branches.
  * @param l Left branch of computation
  * @param r Right branch of computation
  */
-export const switchK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B, C>(l: KleisliIO<F, E, A, B>, r: KleisliIO<F, E, C, B>): KleisliIO<F, E, Either<A, C>, B> =>
+export function switchK<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B, C>(l: KleisliIO<F, E, A, B>, r: KleisliIO<F, E, C, B>): KleisliIO<F, E, Either<A, C>, B> =>
     isImpure(l) && isImpure(r) ?
       new Impure<F, E, Either<A, C>, B>(M, (a) => pipe(
         a,
@@ -348,6 +361,7 @@ export const switchK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
           (ar) => r.run(ar),
         )),
       );
+}
 
 /**
  * Execute `l` and `r` computations and if both succeed, process the results with `f`.
@@ -355,26 +369,28 @@ export const switchK = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
  * @param r Second `KleisliIO` computation
  * @param f Function to process the results of both computations
  */
-export const zipWith = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B, C, D>(l: KleisliIO<F, E, A, B>, r: KleisliIO<F, E, A, C>) =>
+export function zipWith<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B, C, D>(l: KleisliIO<F, E, A, B>, r: KleisliIO<F, E, A, C>) =>
     (f: (t: [B, C]) => D): KleisliIO<F, E, A, D> =>
       isImpure(l) && isImpure(r) ?
         new Impure<F, E, A, D>(M, (a) => f([l._run(a), r._run(a)])) :
         pure(M)((a) => M.chain(l.run(a), (b) => M.map(r.run(a), (c) => f([b, c]))));
+}
 
 /**
  * Propagate the input unchanged.
  */
-export const identity = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A>(): KleisliIO<F, E, A, A> => liftK(M)((x) => x);
+export function identity<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A>(): KleisliIO<F, E, A, A> => liftK(M)((x) => x);
+}
 
 /**
  * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
  * A flipped version of @see right.
  * @param k Computation from `A` to `B`
  */
-export const left = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B, C>(k: KleisliIO<F, E, A, B>): KleisliIO<F, E, Either<A, C>, Either<B, C>> =>
+export function left<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B, C>(k: KleisliIO<F, E, A, B>): KleisliIO<F, E, Either<A, C>, Either<B, C>> =>
     isImpure(k) ?
       new Impure(M, (a) => pipe(a, fold(
         (l) => eitherLeft(k._run(l)),
@@ -384,14 +400,15 @@ export const left = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
         (l) => M.map(k.run(l), (x) => eitherLeft(x)),
         (r) => M.of(eitherRight(r)),
       )));
+}
 
 /**
  * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
  * A flipped version of @see left.
  * @param k Computation from `A` to `B`
  */
-export const right = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B, C>(k: KleisliIO<F, E, A, B>): KleisliIO<F, E, Either<C, A>, Either<C, B>> =>
+export function right<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B, C>(k: KleisliIO<F, E, A, B>): KleisliIO<F, E, Either<C, A>, Either<C, B>> =>
     isImpure(k) ?
       new Impure(M, (a) => pipe(a, fold(
         (l) => eitherLeft(l),
@@ -401,14 +418,16 @@ export const right = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
         (l) => M.of(eitherLeft(l)),
         (r) => M.map(k.run(r), (x) => eitherRight(x)),
       )));
+}
 
 /**
  * Depending on the condition, propagate the original input through the left or right part of `Either`.
  * @param cond Predicate for `A`
  */
-export const test = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A>(cond: KleisliIO<F, E, A, boolean>): KleisliIO<F, E, A, Either<A, A>> =>
+export function test<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A>(cond: KleisliIO<F, E, A, boolean>): KleisliIO<F, E, A, Either<A, A>> =>
     cond.both(identity(M)()).andThen(liftK(M)(([c, a]) => c ? eitherLeft(a) : eitherRight(a)));
+}
 
 /**
  * Depending on the condition, execute either `then` or `else`.
@@ -416,29 +435,31 @@ export const test = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
  * @param then Computation to run if `cond` is `true`
  * @param else_ Computation to run if `cond` is `false`
  */
-export const ifThenElse = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(cond: KleisliIO<F, E, A, boolean>) =>
+export function ifThenElse<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B>(cond: KleisliIO<F, E, A, boolean>) =>
     (then: KleisliIO<F, E, A, B>) => (else_: KleisliIO<F, E, A, B>): KleisliIO<F, E, A, B> =>
       isImpure(cond) && isImpure(then) && isImpure(else_) ?
         new Impure(M, (a) => cond._run(a) ? then._run(a) : else_._run(a)) :
         test(M)(cond).andThen(switchK(M)(then, else_));
+}
 
 /**
  * Simplified version of @see ifThenElse without the `else` part.
  * @param cond Predicate for `A`
  * @param then Computation to run if `cond` is `true`
  */
-export const ifThen = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A>(cond: KleisliIO<F, E, A, boolean>) =>
+export function ifThen<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A>(cond: KleisliIO<F, E, A, boolean>) =>
     (then: KleisliIO<F, E, A, A>): KleisliIO<F, E, A, A> => ifThenElse(M)<E, A, A>(cond)(then)(identity(M)());
+}
 
 /**
  * While-loop: run `body` until `cond` is `true`.
  * @param cond Predicate for `A`
  * @param body Computation to run continuously until `cond` is `false`
  */
-export const whileDo = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A>(cond: KleisliIO<F, E, A, boolean>) => (body: KleisliIO<F, E, A, A>): KleisliIO<F, E, A, A> => {
+export function whileDo<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A>(cond: KleisliIO<F, E, A, boolean>) => (body: KleisliIO<F, E, A, A>): KleisliIO<F, E, A, A> => {
     if (isImpure(cond) && isImpure(body)) {
       return new Impure<F, E, A, A>(
         M,
@@ -459,146 +480,151 @@ export const whileDo = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
       return loop();
     }
   };
+}
 
 /**
  * Lifted version of `fst` tuple function.
  */
-export const fst = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(): KleisliIO<F, E, [A, B], A> => liftK(M)(([a]) => a);
+export function fst<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B>(): KleisliIO<F, E, [A, B], A> => liftK(M)(([a]) => a);
+}
 
 /**
  * Lifted version of `snd` tuple function.
  */
-export const snd = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) =>
-  <E, A, B>(): KleisliIO<F, E, [A, B], B> => liftK(M)(([, b]) => b);
+export function snd<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return <E, A, B>(): KleisliIO<F, E, [A, B], B> => liftK(M)(([, b]) => b);
+}
 
 /**
  * Convenience method which retruns instances of KleisliIO API for the given monad.
  * @param M MonadThrow & Bifunctor instance
  */
-export const getInstancesFor = <F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) => ({
-  /**
-   * Applicative `of` function.
-   * Lift a value of type `B` into a context of `KleisliIO`.
-   * @param b Value of type `B`
-   */
-  of: of(M),
-  /**
-   * Create a new instance of `Pure` computation.
-   * @param f Function to run
-   */
-  pure: pure(M),
-  /**
-   * Create a new instance of `Impure` computation.
-   * @param catcher Function to transform the error from `Error` into `E`
-   * @param f Impure computation from `A` to `B` which may throw
-   */
-  impure: impure(M),
-  /**
-   * Create a new `KleisliIO` computation from impure function which *you know* to never throw exceptions,
-   * or throw exceptions which should lead to termination fo the program.
-   * @param f Impure computation from `A` to `B`
-   */
-  impureVoid: impureVoid(M),
-  /**
-   * Lift the impure computation into `KleisliIO` context.
-   * @param f Impure function from `A` to `B`
-   */
-  liftK: liftK(M),
-  /**
-   * Monadic `chain` function.
-   * Apply function `f` to the result of current `KleisliIO<F, E, A, B>`, determining the next flow of computations.
-   * @param fa Basic KleisliIO computation
-   * @param f Function from `B` to `KleisliIO<F, E, A, C>`, which represents next sequential computation
-   */
-  chain: chain(M),
-  /**
-   * Create a new `KleisliIO` computation which result in `b`.
-   * @param b Lazy value of type `B`
-   */
-  point: point(M),
-  /**
-   * Fail with an error of type `E`.
-   * @param e Error of type `E`
-   */
-  fail: fail(M),
-  /**
-   * Tuple swap, lifted in `KleisliIO` context.
-   */
-  swap: swap(M),
-  /**
-   * Perform right-to-left Kleisli arrows compotions.
-   * @param second Second computation to apply
-   * @param first First computation to apply
-   */
-  composeK: composeK(M),
-  /**
-   * Perform left-to-right Kleisli arrows compotions.
-   * @param first First computation to apply
-   * @param second Second computation to apply
-   */
-  pipeK: pipeK(M),
-  /**
-   * Depending on the input of type `Either<A, C>`, execute either `l` or `r` branches.
-   * @param l Left branch of computation
-   * @param r Right branch of computation
-   */
-  switchK: switchK(M),
-  /**
-   * Execute `l` and `r` computations and if both succeed, process the results with `f`.
-   * @param l First `KleisliIO` computation
-   * @param r Second `KleisliIO` computation
-   * @param f Function to process the results of both computations
-   */
-  zipWith: zipWith(M),
-  /**
-   * Propagate the input unchanged.
-   */
-  identity: identity(M),
-  /**
-   * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
-   * A flipped version of @see right.
-   * @param k Computation from `A` to `B`
-   */
-  left: left(M),
-  /**
-   * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
-   * A flipped version of @see left.
-   * @param k Computation from `A` to `B`
-   */
-  right: right(M),
-  /**
-   * Depending on the condition, propagate the original input through the left or right part of `Either`.
-   * @param cond Predicate for `A`
-   */
-  test: test(M),
-  /**
-   * Depending on the condition, execute either `then` or `else`.
-   * @param cond Predicate for `A`
-   * @param then Computation to run if `cond` is `true`
-   * @param else_ Computation to run if `cond` is `false`
-   */
-  ifThenElse: ifThenElse(M),
-  /**
-   * Simplified version of @see ifThenElse without the `else` part.
-   * @param cond Predicate for `A`
-   * @param then Computation to run if `cond` is `true`
-   */
-  ifThen: ifThen(M),
-  /**
-   * While-loop: run `body` until `cond` is `true`.
-   * @param cond Predicate for `A`
-   * @param body Computation to run continuously until `cond` is `false`
-   */
-  whileDo: whileDo(M),
-  /**
-   * Lifted version of `fst` tuple function.
-   */
-  fst: fst(M),
-  /**
-   * Lifted version of `snd` tuple function.
-   */
-  snd: snd(M),
-});
+export function getInstancesFor<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
+  return ({
+    /**
+     * Applicative `of` function.
+     * Lift a value of type `B` into a context of `KleisliIO`.
+     * @param b Value of type `B`
+     */
+    of: of(M),
+    /**
+     * Create a new instance of `Pure` computation.
+     * @param f Function to run
+     */
+    pure: pure(M),
+    /**
+     * Create a new instance of `Impure` computation.
+     * @param catcher Function to transform the error from `Error` into `E`
+     * @param f Impure computation from `A` to `B` which may throw
+     */
+    impure: impure(M),
+    /**
+     * Create a new `KleisliIO` computation from impure function which *you know* to never throw exceptions,
+     * or throw exceptions which should lead to termination fo the program.
+     * @param f Impure computation from `A` to `B`
+     */
+    impureVoid: impureVoid(M),
+    /**
+     * Lift the impure computation into `KleisliIO` context.
+     * @param f Impure function from `A` to `B`
+     */
+    liftK: liftK(M),
+    /**
+     * Monadic `chain` function.
+     * Apply function `f` to the result of current `KleisliIO<F, E, A, B>`, determining the next flow of computations.
+     * @param fa Basic KleisliIO computation
+     * @param f Function from `B` to `KleisliIO<F, E, A, C>`, which represents next sequential computation
+     */
+    chain: chain(M),
+    /**
+     * Create a new `KleisliIO` computation which result in `b`.
+     * @param b Lazy value of type `B`
+     */
+    point: point(M),
+    /**
+     * Fail with an error of type `E`.
+     * @param e Error of type `E`
+     */
+    fail: fail(M),
+    /**
+     * Tuple swap, lifted in `KleisliIO` context.
+     */
+    swap: swap(M),
+    /**
+     * Perform right-to-left Kleisli arrows compotions.
+     * @param second Second computation to apply
+     * @param first First computation to apply
+     */
+    composeK: composeK(M),
+    /**
+     * Perform left-to-right Kleisli arrows compotions.
+     * @param first First computation to apply
+     * @param second Second computation to apply
+     */
+    pipeK: pipeK(M),
+    /**
+     * Depending on the input of type `Either<A, C>`, execute either `l` or `r` branches.
+     * @param l Left branch of computation
+     * @param r Right branch of computation
+     */
+    switchK: switchK(M),
+    /**
+     * Execute `l` and `r` computations and if both succeed, process the results with `f`.
+     * @param l First `KleisliIO` computation
+     * @param r Second `KleisliIO` computation
+     * @param f Function to process the results of both computations
+     */
+    zipWith: zipWith(M),
+    /**
+     * Propagate the input unchanged.
+     */
+    identity: identity(M),
+    /**
+     * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
+     * A flipped version of @see right.
+     * @param k Computation from `A` to `B`
+     */
+    left: left(M),
+    /**
+     * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
+     * A flipped version of @see left.
+     * @param k Computation from `A` to `B`
+     */
+    right: right(M),
+    /**
+     * Depending on the condition, propagate the original input through the left or right part of `Either`.
+     * @param cond Predicate for `A`
+     */
+    test: test(M),
+    /**
+     * Depending on the condition, execute either `then` or `else`.
+     * @param cond Predicate for `A`
+     * @param then Computation to run if `cond` is `true`
+     * @param else_ Computation to run if `cond` is `false`
+     */
+    ifThenElse: ifThenElse(M),
+    /**
+     * Simplified version of @see ifThenElse without the `else` part.
+     * @param cond Predicate for `A`
+     * @param then Computation to run if `cond` is `true`
+     */
+    ifThen: ifThen(M),
+    /**
+     * While-loop: run `body` until `cond` is `true`.
+     * @param cond Predicate for `A`
+     * @param body Computation to run continuously until `cond` is `false`
+     */
+    whileDo: whileDo(M),
+    /**
+     * Lifted version of `fst` tuple function.
+     */
+    fst: fst(M),
+    /**
+     * Lifted version of `snd` tuple function.
+     */
+    snd: snd(M),
+  });
+}
 
 export default getInstancesFor;
