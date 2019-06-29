@@ -16,7 +16,7 @@
 // tslint:disable:no-unused-expression
 
 import { expect } from 'chai';
-import { left, right } from 'fp-ts/lib/Either';
+import { fold, left, right } from 'fp-ts/lib/Either';
 import { flow, identity as id } from 'fp-ts/lib/function';
 import { identity, URI } from 'fp-ts/lib/Identity';
 
@@ -213,8 +213,14 @@ describe('Kleisli suite', () => {
     it('test', () => {
       const m = K.test(K.liftK<number, boolean>((n) => n % 2 === 0));
 
-      expect(m.run(42)).to.equal(42);
-      expect(m.run(41)).to.equal(41);
+      fold(
+        (l) => expect(l).to.equal(42),
+        () => expect.fail('is right'),
+      )(m.run(42));
+      fold(
+        () => expect.fail('is left'),
+        (r) => expect(r).to.equal(41),
+      )(m.run(41));
     });
 
     it('ifThenElse', () => {
