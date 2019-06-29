@@ -1,5 +1,9 @@
 # Changelog
 
+# 0.3.0 – 2019-06-29
+### Added
+- `BiKleisli` and `BiKleisliIO` instances to model an arrow of form `F<A> -> G<B>` and `F<E, A> -> G<E, B>`, respectively.
+
 # 0.2.1 - 2019-06-18
 ### Changed
 - Migrate to `fp-ts` v1.19.0
