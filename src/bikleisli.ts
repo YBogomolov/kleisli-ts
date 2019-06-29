@@ -205,32 +205,36 @@ class Compose<F extends URIS, G extends URIS, A, B, C> extends BiKleisli<F, G, A
   run = (fa: Kind<F, A>): Kind<G, C> => this.M.chain(this.T(this.W.extend(fa, this.f.run)), (fb) => this.g.run(fb));
 }
 
-const isImpure = <F extends URIS, G extends URIS, A, B>(a: BiKleisli<F, G, A, B>): a is Impure<F, G, A, B> =>
-  a.tag === 'Impure';
+function isImpure<F extends URIS, G extends URIS, A, B>(a: BiKleisli<F, G, A, B>): a is Impure<F, G, A, B> {
+  return a.tag === 'Impure';
+}
 
 /**
  * Create a new instance of `Pure` computation.
  * @param f Function to run
  */
-export const pure = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B>(f: (a: Kind<F, A>) => Kind<G, B>): BiKleisli<F, G, A, B> => new Pure<F, G, A, B>(W, M, T, f);
+export function pure<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B>(f: (a: Kind<F, A>) => Kind<G, B>): BiKleisli<F, G, A, B> => new Pure<F, G, A, B>(W, M, T, f);
+}
 
 /**
  * Create a new instance of `Impure` computation.
  * @param catcher Function to transform the error from `Error` into `E`
  * @param f Impure computation from `A` to `B` which may throw
  */
-export const impure = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <E>(catcher: (e: Error) => E) => <A, B>(f: (a: A) => B): BiKleisli<F, G, A, B> => new Impure(W, M, T, (a: A) => {
-    try {
-      return f(a);
-    } catch (error) {
-      if (catcher(error) !== undefined) {
-        throw new KleisliError<E>(catcher(error));
+export function impure<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <E>(catcher: (e: Error) => E) => <A, B>(f: (a: A) => B): BiKleisli<F, G, A, B> =>
+    new Impure(W, M, T, (a: A) => {
+      try {
+        return f(a);
+      } catch (error) {
+        if (catcher(error) !== undefined) {
+          throw new KleisliError<E>(catcher(error));
+        }
+        throw error;
       }
-      throw error;
-    }
-  });
+    });
+}
 
 const voidCatcher = (e: Error): never => { throw e; };
 
@@ -239,15 +243,17 @@ const voidCatcher = (e: Error): never => { throw e; };
  * or throw exceptions which should lead to termination fo the program.
  * @param f Impure computation from `A` to `B`
  */
-export const impureVoid = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B>(f: (a: A) => B): BiKleisli<F, G, A, B> => impure(W, M, T)(voidCatcher)(f);
+export function impureVoid<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B>(f: (a: A) => B): BiKleisli<F, G, A, B> => impure(W, M, T)(voidCatcher)(f);
+}
 
 /**
  * Lift the impure computation into `BiKleisli` context.
  * @param f Impure function from `A` to `B`
  */
-export const liftK = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B>(f: (a: A) => B): BiKleisli<F, G, A, B> => new Impure(W, M, T, f);
+export function liftK<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B>(f: (a: A) => B): BiKleisli<F, G, A, B> => new Impure(W, M, T, f);
+}
 
 /**
  * Monadic `chain` function.
@@ -255,58 +261,64 @@ export const liftK = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<
  * @param fa Basic Kleisli computation
  * @param f Function from `B` to `BiKleisli<F, G, A, C>`, which represents next sequential computation
  */
-export const chain = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B, C>(fa: BiKleisli<F, G, A, B>, f: (b: B) => BiKleisli<F, G, A, C>): BiKleisli<F, G, A, C> =>
+export function chain<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B, C>(fa: BiKleisli<F, G, A, B>, f: (b: B) => BiKleisli<F, G, A, C>): BiKleisli<F, G, A, C> =>
     pure(W, M, T)<A, C>((a) => M.chain(fa.run(a), (b) => f(b).run(a)));
+}
 
 /**
  * Create a new `BiKleisli` computation which result in `b`.
  * @param b Lazy value of type `B`
  */
-export const point = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B>(b: () => B): BiKleisli<F, G, A, B> => liftK(W, M, T)(b);
+export function point<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B>(b: () => B): BiKleisli<F, G, A, B> => liftK(W, M, T)(b);
+}
 
 /**
  * Applicative `of` function.
  * Lift a value of type `B` into a context of `BiKleisli`.
  * @param b Value of type `B`
  */
-export const of = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B>(b: B): BiKleisli<F, G, A, B> => liftK(W, M, T)(() => b);
+export function of<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B>(b: B): BiKleisli<F, G, A, B> => liftK(W, M, T)(() => b);
+}
 
 /**
  * Tuple swap, lifted in `BiKleisli` context.
  */
-export const swap = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B>(): BiKleisli<F, G, [A, B], [B, A]> => liftK(W, M, T)(([a, b]) => [b, a]);
+export function swap<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B>(): BiKleisli<F, G, [A, B], [B, A]> => liftK(W, M, T)(([a, b]) => [b, a]);
+}
 
 /**
  * Perform right-to-left Kleisli arrows compotions.
  * @param second Second computation to apply
  * @param first First computation to apply
  */
-export const composeK = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B, C>(second: BiKleisli<F, G, B, C>, first: BiKleisli<F, G, A, B>): BiKleisli<F, G, A, C> =>
+export function composeK<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B, C>(second: BiKleisli<F, G, B, C>, first: BiKleisli<F, G, A, B>): BiKleisli<F, G, A, C> =>
     isImpure(second) && isImpure(first) ?
       new Impure(W, M, T, flow(first._run, second._run)) :
       new Compose(W, M, T, first, second);
+}
 
 /**
  * Perform left-to-right Kleisli arrows compotions.
  * @param first First computation to apply
  * @param second Second computation to apply
  */
-export const pipeK = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B, C>(first: BiKleisli<F, G, A, B>, second: BiKleisli<F, G, B, C>): BiKleisli<F, G, A, C> =>
+export function pipeK<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B, C>(first: BiKleisli<F, G, A, B>, second: BiKleisli<F, G, B, C>): BiKleisli<F, G, A, C> =>
     composeK(W, M, T)(second, first);
+}
 
 /**
  * Depending on the input of type `Either<A, C>`, execute either `l` or `r` branches.
  * @param l Left branch of computation
  * @param r Right branch of computation
  */
-export const switchK = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B, C>(l: BiKleisli<F, G, A, B>, r: BiKleisli<F, G, C, B>): BiKleisli<F, G, Either<A, C>, B> =>
+export function switchK<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B, C>(l: BiKleisli<F, G, A, B>, r: BiKleisli<F, G, C, B>): BiKleisli<F, G, Either<A, C>, B> =>
     isImpure(l) && isImpure(r) ?
       new Impure<F, G, Either<A, C>, B>(W, M, T, (ac) => pipe(
         ac,
@@ -325,6 +337,7 @@ export const switchK = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad
           ),
         ),
       );
+}
 
 /**
  * Execute `l` and `r` computations and if both succeed, process the results with `f`.
@@ -332,26 +345,28 @@ export const switchK = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad
  * @param r Second `BiKleisli` computation
  * @param f Function to process the results of both computations
  */
-export const zipWith = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B, C, D>(l: BiKleisli<F, G, A, B>, r: BiKleisli<F, G, A, C>) =>
+export function zipWith<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B, C, D>(l: BiKleisli<F, G, A, B>, r: BiKleisli<F, G, A, C>) =>
     (f: (t: [B, C]) => D): BiKleisli<F, G, A, D> =>
       isImpure(l) && isImpure(r) ?
         new Impure<F, G, A, D>(W, M, T, (a) => f([l._run(a), r._run(a)])) :
         pure(W, M, T)((a) => M.chain(l.run(a), (b) => M.map(r.run(a), (c) => f([b, c]))));
+}
 
 /**
  * Propagate the input unchanged.
  */
-export const identity = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A>(): BiKleisli<F, G, A, A> => liftK(W, M, T)((x) => x);
+export function identity<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A>(): BiKleisli<F, G, A, A> => liftK(W, M, T)((x) => x);
+}
 
 /**
  * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
  * A flipped version of @see right.
  * @param k Computation from `A` to `B`
  */
-export const left = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B, C>(k: BiKleisli<F, G, A, B>): BiKleisli<F, G, Either<A, C>, Either<B, C>> =>
+export function left<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B, C>(k: BiKleisli<F, G, A, B>): BiKleisli<F, G, Either<A, C>, Either<B, C>> =>
     isImpure(k) ?
       new Impure(W, M, T, (ac) => pipe(ac, fold(
         (a) => eitherLeft(k._run(a)),
@@ -365,14 +380,15 @@ export const left = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G
           (c) => M.of(eitherRight(c)),
         ),
       ));
+}
 
 /**
  * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
  * A flipped version of @see left.
  * @param k Computation from `A` to `B`
  */
-export const right = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B, C>(k: BiKleisli<F, G, A, B>): BiKleisli<F, G, Either<C, A>, Either<C, B>> =>
+export function right<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B, C>(k: BiKleisli<F, G, A, B>): BiKleisli<F, G, Either<C, A>, Either<C, B>> =>
     isImpure(k) ?
       new Impure(W, M, T, (a) => pipe(a, fold(
         (l) => eitherLeft(l),
@@ -386,14 +402,16 @@ export const right = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<
           (c) => M.map(k.run(W.extend(fca, () => c)), (x) => eitherRight(x)),
         ),
       ));
+}
 
 /**
  * Depending on the condition, propagate the original input through the left or right part of `Either`.
  * @param cond Predicate for `A`
  */
-export const test = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A>(cond: BiKleisli<F, G, A, boolean>): BiKleisli<F, G, A, Either<A, A>> =>
+export function test<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A>(cond: BiKleisli<F, G, A, boolean>): BiKleisli<F, G, A, Either<A, A>> =>
     cond.both(identity(W, M, T)()).andThen(liftK(W, M, T)(([c, a]) => c ? eitherLeft(a) : eitherRight(a)));
+}
 
 /**
  * Depending on the condition, execute either `then` or `else`.
@@ -401,29 +419,31 @@ export const test = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G
  * @param then Computation to run if `cond` is `true`
  * @param else_ Computation to run if `cond` is `false`
  */
-export const ifThenElse = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B>(cond: BiKleisli<F, G, A, boolean>) =>
+export function ifThenElse<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B>(cond: BiKleisli<F, G, A, boolean>) =>
     (then: BiKleisli<F, G, A, B>) => (else_: BiKleisli<F, G, A, B>): BiKleisli<F, G, A, B> =>
       isImpure(cond) && isImpure(then) && isImpure(else_) ?
         new Impure(W, M, T, (a) => cond._run(a) ? then._run(a) : else_._run(a)) :
         test(W, M, T)(cond).andThen(switchK(W, M, T)(then, else_));
+}
 
 /**
  * Simplified version of @see ifThenElse without the `else` part.
  * @param cond Predicate for `A`
  * @param then Computation to run if `cond` is `true`
  */
-export const ifThen = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A>(cond: BiKleisli<F, G, A, boolean>) =>
+export function ifThen<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A>(cond: BiKleisli<F, G, A, boolean>) =>
     (then: BiKleisli<F, G, A, A>): BiKleisli<F, G, A, A> => ifThenElse(W, M, T)<A, A>(cond)(then)(identity(W, M, T)());
+}
 
 /**
  * While-loop: run `body` until `cond` is `true`.
  * @param cond Predicate for `A`
  * @param body Computation to run continuously until `cond` is `false`
  */
-export const whileDo = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A>(cond: BiKleisli<F, G, A, boolean>) => (body: BiKleisli<F, G, A, A>): BiKleisli<F, G, A, A> => {
+export function whileDo<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A>(cond: BiKleisli<F, G, A, boolean>) => (body: BiKleisli<F, G, A, A>): BiKleisli<F, G, A, A> => {
     if (isImpure(cond) && isImpure(body)) {
       return new Impure<F, G, A, A>(
         W,
@@ -446,145 +466,150 @@ export const whileDo = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad
       return loop();
     }
   };
+}
 
 /**
  * Lifted version of `fst` tuple function.
  */
-export const fst = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B>(): BiKleisli<F, G, [A, B], A> => liftK(W, M, T)(([a]) => a);
+export function fst<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B>(): BiKleisli<F, G, [A, B], A> => liftK(W, M, T)(([a]) => a);
+}
 
 /**
  * Lifted version of `snd` tuple function.
  */
-export const snd = <F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) =>
-  <A, B>(): BiKleisli<F, G, [A, B], B> => liftK(W, M, T)(([, b]) => b);
+export function snd<F extends URIS, G extends URIS>(W: Comonad1<F>, M: Monad1<G>, T: Distributes11<F, G>) {
+  return <A, B>(): BiKleisli<F, G, [A, B], B> => liftK(W, M, T)(([, b]) => b);
+}
 
 /**
  * Convenience method which retruns instances of Kleisli API for the given monad.
  * @param M Monad1 & Bifunctor instance
  */
-export const getInstancesFor = <F extends URIS, G extends URIS>(
+export function getInstancesFor<F extends URIS, G extends URIS>(
   W: Comonad1<F>,
   M: Monad1<G>,
   T: Distributes11<F, G>,
-) => ({
-  /**
-   * Applicative `of` function.
-   * Lift a value of type `B` into a context of `BiKleisli`.
-   * @param b Value of type `B`
-   */
-  of: of(W, M, T),
-  /**
-   * Create a new instance of `Pure` computation.
-   * @param f Function to run
-   */
-  pure: pure(W, M, T),
-  /**
-   * Create a new instance of `Impure` computation.
-   * @param catcher Function to transform the error from `Error` into `E`
-   * @param f Impure computation from `A` to `B` which may throw
-   */
-  impure: impure(W, M, T),
-  /**
-   * Create a new `BiKleisli` computation from impure function which *you know* to never throw exceptions,
-   * or throw exceptions which should lead to termination fo the program.
-   * @param f Impure computation from `A` to `B`
-   */
-  impureVoid: impureVoid(W, M, T),
-  /**
-   * Lift the impure computation into `BiKleisli` context.
-   * @param f Impure function from `A` to `B`
-   */
-  liftK: liftK(W, M, T),
-  /**
-   * Monadic `chain` function.
-   * Apply function `f` to the result of current `BiKleisli<F, G, A, B>`, determining the next flow of computations.
-   * @param fa Basic Kleisli computation
-   * @param f Function from `B` to `BiKleisli<F, G, A, C>`, which represents next sequential computation
-   */
-  chain: chain(W, M, T),
-  /**
-   * Create a new `BiKleisli` computation which result in `b`.
-   * @param b Lazy value of type `B`
-   */
-  point: point(W, M, T),
-  /**
-   * Tuple swap, lifted in `BiKleisli` context.
-   */
-  swap: swap(W, M, T),
-  /**
-   * Perform right-to-left Kleisli arrows compotions.
-   * @param second Second computation to apply
-   * @param first First computation to apply
-   */
-  composeK: composeK(W, M, T),
-  /**
-   * Perform left-to-right Kleisli arrows compotions.
-   * @param first First computation to apply
-   * @param second Second computation to apply
-   */
-  pipeK: pipeK(W, M, T),
-  /**
-   * Depending on the input of type `Either<A, C>`, execute either `l` or `r` branches.
-   * @param l Left branch of computation
-   * @param r Right branch of computation
-   */
-  switchK: switchK(W, M, T),
-  /**
-   * Execute `l` and `r` computations and if both succeed, process the results with `f`.
-   * @param l First `BiKleisli` computation
-   * @param r Second `BiKleisli` computation
-   * @param f Function to process the results of both computations
-   */
-  zipWith: zipWith(W, M, T),
-  /**
-   * Propagate the input unchanged.
-   */
-  identity: identity(W, M, T),
-  /**
-   * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
-   * A flipped version of @see right.
-   * @param k Computation from `A` to `B`
-   */
-  left: left(W, M, T),
-  /**
-   * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
-   * A flipped version of @see left.
-   * @param k Computation from `A` to `B`
-   */
-  right: right(W, M, T),
-  /**
-   * Depending on the condition, propagate the original input through the left or right part of `Either`.
-   * @param cond Predicate for `A`
-   */
-  test: test(W, M, T),
-  /**
-   * Depending on the condition, execute either `then` or `else`.
-   * @param cond Predicate for `A`
-   * @param then Computation to run if `cond` is `true`
-   * @param else_ Computation to run if `cond` is `false`
-   */
-  ifThenElse: ifThenElse(W, M, T),
-  /**
-   * Simplified version of @see ifThenElse without the `else` part.
-   * @param cond Predicate for `A`
-   * @param then Computation to run if `cond` is `true`
-   */
-  ifThen: ifThen(W, M, T),
-  /**
-   * While-loop: run `body` until `cond` is `true`.
-   * @param cond Predicate for `A`
-   * @param body Computation to run continuously until `cond` is `false`
-   */
-  whileDo: whileDo(W, M, T),
-  /**
-   * Lifted version of `fst` tuple function.
-   */
-  fst: fst(W, M, T),
-  /**
-   * Lifted version of `snd` tuple function.
-   */
-  snd: snd(W, M, T),
-});
+) {
+  return ({
+    /**
+     * Applicative `of` function.
+     * Lift a value of type `B` into a context of `BiKleisli`.
+     * @param b Value of type `B`
+     */
+    of: of(W, M, T),
+    /**
+     * Create a new instance of `Pure` computation.
+     * @param f Function to run
+     */
+    pure: pure(W, M, T),
+    /**
+     * Create a new instance of `Impure` computation.
+     * @param catcher Function to transform the error from `Error` into `E`
+     * @param f Impure computation from `A` to `B` which may throw
+     */
+    impure: impure(W, M, T),
+    /**
+     * Create a new `BiKleisli` computation from impure function which *you know* to never throw exceptions,
+     * or throw exceptions which should lead to termination fo the program.
+     * @param f Impure computation from `A` to `B`
+     */
+    impureVoid: impureVoid(W, M, T),
+    /**
+     * Lift the impure computation into `BiKleisli` context.
+     * @param f Impure function from `A` to `B`
+     */
+    liftK: liftK(W, M, T),
+    /**
+     * Monadic `chain` function.
+     * Apply function `f` to the result of current `BiKleisli<F, G, A, B>`, determining the next flow of computations.
+     * @param fa Basic Kleisli computation
+     * @param f Function from `B` to `BiKleisli<F, G, A, C>`, which represents next sequential computation
+     */
+    chain: chain(W, M, T),
+    /**
+     * Create a new `BiKleisli` computation which result in `b`.
+     * @param b Lazy value of type `B`
+     */
+    point: point(W, M, T),
+    /**
+     * Tuple swap, lifted in `BiKleisli` context.
+     */
+    swap: swap(W, M, T),
+    /**
+     * Perform right-to-left Kleisli arrows compotions.
+     * @param second Second computation to apply
+     * @param first First computation to apply
+     */
+    composeK: composeK(W, M, T),
+    /**
+     * Perform left-to-right Kleisli arrows compotions.
+     * @param first First computation to apply
+     * @param second Second computation to apply
+     */
+    pipeK: pipeK(W, M, T),
+    /**
+     * Depending on the input of type `Either<A, C>`, execute either `l` or `r` branches.
+     * @param l Left branch of computation
+     * @param r Right branch of computation
+     */
+    switchK: switchK(W, M, T),
+    /**
+     * Execute `l` and `r` computations and if both succeed, process the results with `f`.
+     * @param l First `BiKleisli` computation
+     * @param r Second `BiKleisli` computation
+     * @param f Function to process the results of both computations
+     */
+    zipWith: zipWith(W, M, T),
+    /**
+     * Propagate the input unchanged.
+     */
+    identity: identity(W, M, T),
+    /**
+     * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
+     * A flipped version of @see right.
+     * @param k Computation from `A` to `B`
+     */
+    left: left(W, M, T),
+    /**
+     * Execute either the `k` computation or propagate the value of type `C` through, depending on an input.
+     * A flipped version of @see left.
+     * @param k Computation from `A` to `B`
+     */
+    right: right(W, M, T),
+    /**
+     * Depending on the condition, propagate the original input through the left or right part of `Either`.
+     * @param cond Predicate for `A`
+     */
+    test: test(W, M, T),
+    /**
+     * Depending on the condition, execute either `then` or `else`.
+     * @param cond Predicate for `A`
+     * @param then Computation to run if `cond` is `true`
+     * @param else_ Computation to run if `cond` is `false`
+     */
+    ifThenElse: ifThenElse(W, M, T),
+    /**
+     * Simplified version of @see ifThenElse without the `else` part.
+     * @param cond Predicate for `A`
+     * @param then Computation to run if `cond` is `true`
+     */
+    ifThen: ifThen(W, M, T),
+    /**
+     * While-loop: run `body` until `cond` is `true`.
+     * @param cond Predicate for `A`
+     * @param body Computation to run continuously until `cond` is `false`
+     */
+    whileDo: whileDo(W, M, T),
+    /**
+     * Lifted version of `fst` tuple function.
+     */
+    fst: fst(W, M, T),
+    /**
+     * Lifted version of `snd` tuple function.
+     */
+    snd: snd(W, M, T),
+  });
+}
 
 export default getInstancesFor;

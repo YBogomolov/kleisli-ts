@@ -1,5 +1,9 @@
 # Changelog
 
+# 0.3.1 – 2019-06-29
+### Changed
+- All arrow functions are replaced by the regular old `function` due to fp-ts's `URIS` being expanded prematurely.
+
 # 0.3.0 – 2019-06-29
 ### Added
 - `BiKleisli` and `BiKleisliIO` instances to model an arrow of form `F<A> -> G<B>` and `F<E, A> -> G<E, B>`, respectively.
