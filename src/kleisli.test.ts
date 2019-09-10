@@ -16,8 +16,8 @@
 // tslint:disable:no-unused-expression
 
 import { expect } from 'chai';
-import { left, right } from 'fp-ts/lib/Either';
-import { compose, identity as id } from 'fp-ts/lib/function';
+import { fold, left, right } from 'fp-ts/lib/Either';
+import { flow, identity as id } from 'fp-ts/lib/function';
 import { identity, URI } from 'fp-ts/lib/Identity';
 
 import { getInstancesFor, Kleisli } from './kleisli';
@@ -42,7 +42,7 @@ describe('Kleisli suite', () => {
       const f = (a: string) => `${a}!`;
       const g = (a: string) => a.length;
 
-      const f_o_g = compose(g, f);
+      const f_o_g = flow(f, g);
 
       const fa1 = fa.map(f).map(g);
       const fa2 = fa.map(f_o_g);
@@ -81,7 +81,7 @@ describe('Kleisli suite', () => {
     it('of', () => {
       const m = K.of<void, number>(42);
 
-      expect(m.run().value).to.equal(42);
+      expect(m.run()).to.equal(42);
     });
 
     it('pure', () => {
@@ -89,7 +89,7 @@ describe('Kleisli suite', () => {
         (s: string) => identity.of(s.toLocaleUpperCase() + '!'),
       );
 
-      expect(m.run('aaaa').value).to.equal('AAAA!');
+      expect(m.run('aaaa')).to.equal('AAAA!');
     });
 
     it('impure', () => {
@@ -101,7 +101,7 @@ describe('Kleisli suite', () => {
       };
       const m = K.impure(id)(f);
 
-      expect(m.run('aaaa').value).to.equal('AAAA!');
+      expect(m.run('aaaa')).to.equal('AAAA!');
       expect(() => m.run('')).throws('empty string');
     });
 
@@ -115,12 +115,11 @@ describe('Kleisli suite', () => {
       const m = K.impureVoid(f);
 
       try {
-        expect(m.run(false).value).to.be.true;
+        expect(m.run(false)).to.be.true;
         m.run(true);
         expect.fail();
       } catch (e) {
-        expect(e).to.be.an.instanceOf(Error);
-        expect(e).to.have.property('message').equal('terminate');
+        expect(e).to.be.an.instanceOf(Error).and.to.have.property('message').equal('terminate');
       }
     });
 
@@ -128,38 +127,38 @@ describe('Kleisli suite', () => {
       const f = (s: string) => s.length;
       const m = K.liftK<string, number>(f);
 
-      expect(m.run('').value).to.equal(0);
-      expect(m.run('aaaa').value).to.equal(4);
+      expect(m.run('')).to.equal(0);
+      expect(m.run('aaaa')).to.equal(4);
     });
 
     it('chain', () => {
       const f = (s: string) => K.of<void, number>(s.length);
 
-      expect(K.of<void, string>('aaa').chain(f).run().value).to.equal(3);
+      expect(K.of<void, string>('aaa').chain(f).run()).to.equal(3);
     });
 
     it('point', () => {
       const m = K.point<void, number>(() => 42);
 
-      expect(m.run().value).to.equal(42);
+      expect(m.run()).to.equal(42);
     });
 
     it('swap', () => {
-      expect(K.swap().run([1, true]).value).to.deep.equal([true, 1]);
+      expect(K.swap().run([1, true])).to.deep.equal([true, 1]);
     });
 
-    it('composeK', () => {
+    it('flowK', () => {
       const f = K.pure<string, string>((s) => identity.of(s.toLocaleUpperCase() + '!'));
       const g = K.pure<string, number>((s) => identity.of(s.length));
 
-      expect(K.composeK(g, f).run('aaa').value).to.equal(4);
+      expect(K.composeK(g, f).run('aaa')).to.equal(4);
     });
 
     it('pipeK', () => {
       const f = K.pure<string, string>((s) => identity.of(s.toLocaleUpperCase() + '!'));
       const g = K.pure<string, number>((s) => identity.of(s.length));
 
-      expect(K.pipeK(f, g).run('aaa').value).to.equal(4);
+      expect(K.pipeK(f, g).run('aaa')).to.equal(4);
     });
 
     it('switchK', () => {
@@ -168,8 +167,8 @@ describe('Kleisli suite', () => {
         K.liftK((n) => n > 0),
       );
 
-      expect(m.run(right(42)).value).to.be.true;
-      expect(m.run(left('')).value).to.be.false;
+      expect(m.run(right(42))).to.be.true;
+      expect(m.run(left(''))).to.be.false;
     });
 
     it('zipWith', () => {
@@ -189,33 +188,39 @@ describe('Kleisli suite', () => {
         }
       });
 
-      expect(m.run('a').value).to.equal('String starts with "a"');
-      expect(m.run('a!').value).to.equal('String starts with "a" and ends with "!"');
-      expect(m.run('foo').value).to.equal('String neither starts with "a", nor ends with "!"');
-      expect(m.run('foo!').value).to.equal('String ends with "!"');
+      expect(m.run('a')).to.equal('String starts with "a"');
+      expect(m.run('a!')).to.equal('String starts with "a" and ends with "!"');
+      expect(m.run('foo')).to.equal('String neither starts with "a", nor ends with "!"');
+      expect(m.run('foo!')).to.equal('String ends with "!"');
     });
 
     it('identity', () => {
-      expect(K.identity().run(42).value).to.equal(42);
+      expect(K.identity().run(42)).to.equal(42);
     });
 
     it('left', () => {
       const m = K.left<number, string, number>(K.liftK((n) => n.toString()));
-      expect(m.run(right(42)).value).to.deep.equal(right(42));
-      expect(m.run(left(41)).value).to.deep.equal(left('41'));
+      expect(m.run(right(42))).to.deep.equal(right(42));
+      expect(m.run(left(41))).to.deep.equal(left('41'));
     });
 
     it('right', () => {
       const m = K.right<number, string, number>(K.liftK((n) => n.toString()));
-      expect(m.run(right(42)).value).to.deep.equal(right('42'));
-      expect(m.run(left(41)).value).to.deep.equal(left(41));
+      expect(m.run(right(42))).to.deep.equal(right('42'));
+      expect(m.run(left(41))).to.deep.equal(left(41));
     });
 
     it('test', () => {
       const m = K.test(K.liftK<number, boolean>((n) => n % 2 === 0));
 
-      expect(m.run(42).value.value).to.equal(42);
-      expect(m.run(41).value.value).to.equal(41);
+      fold(
+        (l) => expect(l).to.equal(42),
+        () => expect.fail('is right'),
+      )(m.run(42));
+      fold(
+        () => expect.fail('is left'),
+        (r) => expect(r).to.equal(41),
+      )(m.run(41));
     });
 
     it('ifThenElse', () => {
@@ -224,8 +229,8 @@ describe('Kleisli suite', () => {
         (K.liftK((n) => `is even: ${n}`))
         (K.liftK((n) => `is odd: ${n}`));
 
-      expect(m.run(42).value).to.equal('is even: 42');
-      expect(m.run(41).value).to.equal('is odd: 41');
+      expect(m.run(42)).to.equal('is even: 42');
+      expect(m.run(41)).to.equal('is odd: 41');
     });
 
     it('ifThen', () => {
@@ -233,8 +238,8 @@ describe('Kleisli suite', () => {
         (K.liftK((n) => n % 2 === 1))
         (K.liftK((n) => n + 1));
 
-      expect(m.run(41).value).to.equal(42);
-      expect(m.run(42).value).to.equal(42);
+      expect(m.run(41)).to.equal(42);
+      expect(m.run(42)).to.equal(42);
     });
 
     it('whileDo', () => {
@@ -248,16 +253,16 @@ describe('Kleisli suite', () => {
 
       const res = m.run(4);
 
-      expect(res.value).to.equal(10);
+      expect(res).to.equal(10);
       expect(callCount).to.equal(6);
     });
 
     it('fst', () => {
-      expect(K.fst().run([1, true]).value).to.equal(1);
+      expect(K.fst().run([1, true])).to.equal(1);
     });
 
     it('snd', () => {
-      expect(K.snd().run([1, true]).value).to.be.true;
+      expect(K.snd().run([1, true])).to.be.true;
     });
   });
 });

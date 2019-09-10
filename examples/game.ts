@@ -1,4 +1,3 @@
-import { Task } from 'fp-ts/lib/Task';
 import { taskEither, TaskEither, URI } from 'fp-ts/lib/TaskEither';
 import { createInterface } from 'readline';
 
@@ -9,7 +8,7 @@ const { identity, impureVoid, liftK, point, pure, whileDo } = getInstancesFor(ta
 
 const read: KleisliIO<URI, Error, void, string> =
   pure(
-    () => taskEither.fromTask(new Task(() => new Promise<string>((resolve) => {
+    () => taskEither.fromTask(() => new Promise<string>((resolve) => {
       const rl = createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -18,7 +17,7 @@ const read: KleisliIO<URI, Error, void, string> =
         rl.close();
         resolve(answer);
       });
-    }))),
+    })),
   );
 
 const log: KleisliIO<URI, never, string, void> =
