@@ -1,5 +1,9 @@
 # Changelog
 
+# 1.0.0 – 2019-09-10
+### Changed
+- \[Breaking\] Upgrade to `fp-ts@2`.
+
 # 0.3.1 – 2019-06-29
 ### Changed
 - All arrow functions are replaced by the regular old `function` due to fp-ts's `URIS` being expanded prematurely.
