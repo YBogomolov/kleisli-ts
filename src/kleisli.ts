@@ -280,7 +280,7 @@ export function swap<F extends URIS>(M: Monad1<F>) {
 }
 
 /**
- * Perform right-to-left Kleisli arrows compotions.
+ * Perform right-to-left Kleisli arrows compositions.
  * @param second Second computation to apply
  * @param first First computation to apply
  */
@@ -292,7 +292,7 @@ export function composeK<F extends URIS>(M: Monad1<F>) {
 }
 
 /**
- * Perform left-to-right Kleisli arrows compotions.
+ * Perform left-to-right Kleisli arrows compositions.
  * @param first First computation to apply
  * @param second Second computation to apply
  */
@@ -509,13 +509,13 @@ export function getInstancesFor<F extends URIS>(M: Monad1<F>) {
      */
     swap: swap(M),
     /**
-     * Perform right-to-left Kleisli arrows compotions.
+     * Perform right-to-left Kleisli arrows compositions.
      * @param second Second computation to apply
      * @param first First computation to apply
      */
     composeK: composeK(M),
     /**
-     * Perform left-to-right Kleisli arrows compotions.
+     * Perform left-to-right Kleisli arrows compositions.
      * @param first First computation to apply
      * @param second Second computation to apply
      */

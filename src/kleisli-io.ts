@@ -318,7 +318,7 @@ export function swap<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
 }
 
 /**
- * Perform right-to-left Kleisli arrows compotions.
+ * Perform right-to-left Kleisli arrows compositions.
  * @param second Second computation to apply
  * @param first First computation to apply
  */
@@ -330,7 +330,7 @@ export function composeK<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<F>) {
 }
 
 /**
- * Perform left-to-right Kleisli arrows compotions.
+ * Perform left-to-right Kleisli arrows compositions.
  * @param first First computation to apply
  * @param second Second computation to apply
  */
@@ -552,13 +552,13 @@ export function getInstancesFor<F extends URIS2>(M: MonadThrow2<F> & Bifunctor2<
      */
     swap: swap(M),
     /**
-     * Perform right-to-left Kleisli arrows compotions.
+     * Perform right-to-left Kleisli arrows compositions.
      * @param second Second computation to apply
      * @param first First computation to apply
      */
     composeK: composeK(M),
     /**
-     * Perform left-to-right Kleisli arrows compotions.
+     * Perform left-to-right Kleisli arrows compositions.
      * @param first First computation to apply
      * @param second Second computation to apply
      */
